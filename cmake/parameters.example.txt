@@ -1,0 +1,11 @@
+
+# Arduino configuration
+set(ARDUINO_CPU atmega328)
+set(BOARD nano)
+# iMac
+set(PORT /dev/cu.wchusbserialfa130)
+# Macbook
+#set(PORT /dev/cu.wchusbserial410)
+#set(PORT /dev/cu.wchusbserial620)
+
+#set(ARDUINO_DEBUG True)
