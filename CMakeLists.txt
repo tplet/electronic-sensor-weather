@@ -19,7 +19,10 @@ file(GLOB_RECURSE FILES_CPP "src/*.cpp")
 file(GLOB_RECURSE FILES_H "src/*.h")
 
 # Arduino libraries to include
-#set(ARDSLIBS SPI EEPROM LiquidCrystal)
+#set(ARDSLIBS Time Print)
+
+# Hardware libraries
+#include_directories(${ARDUINO_PLATFORM_PATH}/ARDUINO_PLATFORM/libraries)
 
 generate_arduino_firmware(
         ${CMAKE_PROJECT_NAME}

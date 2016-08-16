@@ -4,7 +4,6 @@
 #include <RF24/RF24.h>
 #include <RTClib/RTClib.h>
 #include <LiquidCrystal.h>
-#include <com/osteres/util/Arduino.h>
 #include <com/osteres/automation/weathersensor/WeatherSensorApplication.h>
 #include <com/osteres/automation/transmission/Transmitter.h>
 
