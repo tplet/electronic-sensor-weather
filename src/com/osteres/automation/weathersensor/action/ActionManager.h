@@ -47,27 +47,7 @@ namespace com
                          */
                         virtual void processPacket(Packet * packet)
                         {
-                            string text = CommandString::toString(packet->getCommand());
-                            switch (packet->getCommand()) {
-                                case Command::DATA:
-                                    text += ":" + packet->getDataLong1();
-                                    break;
-                                default:
-                                    break;
-                            }
 
-                            this->displayScreenPacket(String(text.c_str()));
-                        }
-
-                        /**
-                         * Display packet on second line of screen
-                         */
-                        void displayScreenPacket(String text)
-                        {
-                            this->cleanScreenLine(1);
-                            // Position to 2nd line
-                            this->screen->setCursor(0, 1);
-                            this->screen->write((text).c_str());
                         }
 
                         /**

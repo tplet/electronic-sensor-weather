@@ -18,6 +18,7 @@
 #include <Arduino.h>
 #include <RTClib/RTClib.h>
 #include <LiquidCrystal.h>
+#include <DHT.h>
 #include <com/osteres/util/formatter/Number.h>
 #include <com/osteres/automation/Application.h>
 #include <com/osteres/automation/sensor/Identity.h>
@@ -50,19 +51,22 @@ namespace com
                     /**
                      * Sensor identifier
                      */
-                    static byte const SENSOR = Identity::MASTER;
+                    static byte const SENSOR = Identity::WEATHER;
 
                     /**
                      * Constructor
                      */
-                    WeatherSensorApplication(LiquidCrystal * screen, RTC_DS1307 * rtc, Transmitter * transmitter) {
+                    WeatherSensorApplication(DHT * sensor, LiquidCrystal * screen, RTC_DS1307 * rtc, Transmitter * transmitter) {
                         this->screen = screen;
+                        this->sensor = sensor;
                         this->rtc = rtc;
                         this->transmitter = transmitter;
 
                         // Init
-                        this->intervalScreenRefresh = 1000 * 30; // 30s
-                        this->timePointScreen = millis();
+                        this->intervalScreenRefresh1 = 1000 * 30; // 30s
+                        this->intervalScreenRefresh2 = 1000 * 30; // 30s
+                        this->timePointScreen1 = millis();
+                        this->timePointScreen2 = millis();
 
                         // Create action manager
                         this->actionManager = new ActionManager(this->getScreen());
@@ -89,16 +93,20 @@ namespace com
                         this->rtc->begin();
                         //this->rtc->adjust(DateTime(2016, 6, 2, 21, 29, 00));
 
+                        // Init DHT
+                        this->sensor->begin();
+
                         // Init screen
                         this->screen->begin(16, 2);
                         this->screen->display();
-                        this->displayScreenState();
+                        this->displayScreenState1();
+                        this->displayScreenState2();
 
                         // Transmission
                         static_cast<ArduinoRequester *>(this->transmitter->getRequester())->setRTC(this->getRtc());
-                        //this->transmitter->setActionManager(this->getActionManager());
+                        this->transmitter->setActionManager(this->getActionManager());
 
-                        Serial.println(F("PacketDisplayApplication: Setup executed."));
+                        Serial.println(F("WeatherSensorApplication: Setup executed."));
                     }
 
                     /**
@@ -109,9 +117,13 @@ namespace com
                         // Here, listen (action manager process packet received)
                         this->transmitter->listen();
 
-                        // Refresh LCD every interval
-                        if (millis() - this->timePointScreen > this->getIntervalScreenRefresh()) {
-                            this->displayScreenState();
+                        // Refresh LCD every interval (line 1)
+                        if (millis() - this->timePointScreen1 > this->getIntervalScreenRefresh1()) {
+                            this->displayScreenState1();
+                        }
+                        // Refresh LCD every interval (line 2)
+                        if (millis() - this->timePointScreen2 > this->getIntervalScreenRefresh2()) {
+                            this->displayScreenState2();
                         }
 
                         // Wait 100ms
@@ -121,25 +133,51 @@ namespace com
                     /**
                      * Display first line of screen
                      */
-                    void displayScreenState()
+                    void displayScreenState1()
                     {
                         // Save instant point
-                        this->timePointScreen = millis();
+                        this->timePointScreen1 = millis();
 
-                        // Clean first line by using ' ' (space)
+                        //
+                        // First line: hour
+                        //
                         this->cleanScreenLine(0);
-
-                        // Get datetime
                         DateTime now = this->getRtc()->now();
-
-                        // Content to display
                         string s = "";
                         s += Number::twoDigit(now.hour()) +
                                 ":" + Number::twoDigit(now.minute()) +
                                 ":" + Number::twoDigit(now.second());
-
-                        // Display to screen
                         this->screen->setCursor(0, 0);
+                        this->screen->write(s.c_str());
+                    }
+
+                    /**
+                     * Display second line of screen
+                     *
+                     * Operation can take few seconds!
+                     */
+                    void displayScreenState2()
+                    {
+                        // Save instant point
+                        this->timePointScreen2 = millis();
+
+                        //
+                        // Second line: temp and humidity
+                        //
+                        this->cleanScreenLine(1);
+                        float h = this->getHumidity();
+                        float t = this->getTemperature();
+                        String s = "";
+
+                        // Temp
+                        s += "T:" + (isnan(t) ? String("-") : String(round(t * 10) / 10) + "*C");
+
+                        s += " ";
+
+                        // Humidity
+                        s += "H:" + (isnan(h) ? String("-") : String(round(h)) + "%");
+
+                        this->screen->setCursor(0, 1);
                         this->screen->write(s.c_str());
                     }
 
@@ -154,6 +192,23 @@ namespace com
                             spaces += F(" ");
                         }
                         this->screen->write(spaces.c_str());
+                    }
+
+                    /**
+                     * Get humidity value
+                     */
+                    float getHumidity(bool force = false)
+                    {
+                        return this->sensor->readHumidity(force);
+                    }
+
+                    /**
+                     * Get temperature value
+                     * If fahrenheit param set to true, return value in Fahrenheit unit
+                     */
+                    float getTemperature(bool fahrenheit = false, bool force = false)
+                    {
+                        return this->sensor->readTemperature(fahrenheit, force);
                     }
 
                     /**
@@ -179,17 +234,38 @@ namespace com
                     }
 
                     /**
-                     * Set interval to refresh screen
+                     * Get sensor
                      */
-                    void setIntervalScreenRefresh(unsigned int interval) {
-                        this->intervalScreenRefresh = interval;
+                    DHT * getSensor() {
+                        return this->sensor;
                     }
 
                     /**
-                     * Get interval of screen refresh
+                     * Set interval to refresh screen (line 1)
                      */
-                    unsigned int getIntervalScreenRefresh() {
-                        return this->intervalScreenRefresh;
+                    void setIntervalScreenRefresh1(unsigned int interval) {
+                        this->intervalScreenRefresh1 = interval;
+                    }
+
+                    /**
+                     * Get interval of screen refresh (line 1)
+                     */
+                    unsigned int getIntervalScreenRefresh1() {
+                        return this->intervalScreenRefresh1;
+                    }
+
+                    /**
+                     * Set interval to refresh screen (line 1)
+                     */
+                    void setIntervalScreenRefresh2(unsigned int interval) {
+                        this->intervalScreenRefresh2 = interval;
+                    }
+
+                    /**
+                     * Get interval of screen refresh (line 1)
+                     */
+                    unsigned int getIntervalScreenRefresh2() {
+                        return this->intervalScreenRefresh2;
                     }
 
                 protected:
@@ -210,19 +286,34 @@ namespace com
                     Transmitter * transmitter = NULL;
 
                     /**
+                     * Weather sensor
+                     */
+                    DHT * sensor = NULL;
+
+                    /**
                      * Action manager
                      */
                     ActionManager * actionManager = NULL;
 
                     /**
-                     * Time point for lcd display
+                     * Time point for lcd display (line 1)
                      */
-                    unsigned long timePointScreen;
+                    unsigned long timePointScreen1;
 
                     /**
-                     * Interval for refresh screen
+                     * Time point for lcd display (line 2)
                      */
-                    unsigned int intervalScreenRefresh;
+                    unsigned long timePointScreen2;
+
+                    /**
+                     * Interval for refresh screen (for line 1)
+                     */
+                    unsigned int intervalScreenRefresh1;
+
+                    /**
+                     * Interval for refresh screen (for line 2)
+                     */
+                    unsigned int intervalScreenRefresh2;
 
                 };
             }

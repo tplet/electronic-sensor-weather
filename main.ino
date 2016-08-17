@@ -5,6 +5,7 @@
 #include <RF24/RF24.h>
 #include <RTClib/RTClib.h>
 #include <LiquidCrystal.h>
+#include <DHT.h>
 #include <com/osteres/automation/weathersensor/WeatherSensorApplication.h>
 #include <com/osteres/automation/transmission/Transmitter.h>
 #include <com/osteres/automation/arduino/transmission/ArduinoRequester.h>
@@ -19,6 +20,9 @@ using com::osteres::automation::transmission::packet::Command;
 /* Pins CE, CSN for ARDUINO */
 #define RF_CE    9
 #define RF_CSN   10
+/* Pin for DHT sensor and DHT type */
+#define DHT_PIN  2
+#define DHT_TYPE DHT22
 
 /**
  * Vars
@@ -38,14 +42,16 @@ RF24 radio(RF_CE, RF_CSN);
 RTC_DS1307 rtc;
 // Screen
 LiquidCrystal lcd(3, 4, 5, 6, 7, 8);
+// Sensor
+DHT sensor(DHT_PIN, DHT_TYPE);
 
 /*
  * Prepare object manager
  */
 // Transmission (master mode)
-Transmitter transmitter(&radio, WeatherSensorApplication::SENSOR, true);
+Transmitter transmitter(&radio, WeatherSensorApplication::SENSOR, false);
 // Application
-WeatherSensorApplication application(&lcd, &rtc, &transmitter);
+WeatherSensorApplication application(&sensor, &lcd, &rtc, &transmitter);
 
 /**
  * Initialize
@@ -61,7 +67,8 @@ void setup() {
 
     // Setup
     application.setup();
-    application.setIntervalScreenRefresh(100); // 0.1s
+    application.setIntervalScreenRefresh1(100); // 0.1s
+    application.setIntervalScreenRefresh2(30000); // 30s
 }
 
 //Packet * packet;
