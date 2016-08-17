@@ -22,9 +22,6 @@ file(GLOB_RECURSE FILES_H "src/*.h")
 ## Dependencies:
 # common-arduino
 add_subdirectory(./vendors/common-arduino/)
-# RTC
-#list(APPEND FILES_CPP ${RTClib_FILES_CPP})
-#list(APPEND FILES_H ${RTClib_FILES_H})
 
 # Hardware libraries
 #include_directories(${ARDUINO_PLATFORM_PATH}/ARDUINO_PLATFORM/libraries)
@@ -43,6 +40,3 @@ generate_arduino_firmware(
 
 # Add src directory to "include path"
 target_include_directories(${EXECUTABLE} PUBLIC ./src)
-
-# StandardCplusplus (add root path of this library to include path)
-target_include_directories(${EXECUTABLE} PUBLIC ./vendors/common-arduino/vendors/common/vendors/StandardCplusplus)
