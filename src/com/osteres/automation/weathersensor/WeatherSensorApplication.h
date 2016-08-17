@@ -5,10 +5,6 @@
 #ifndef COM_OSTERES_AUTOMATION_WEATHERSENSOR_WEATHERSENSORAPPLICATION_H
 #define COM_OSTERES_AUTOMATION_WEATHERSENSOR_WEATHERSENSORAPPLICATION_H
 
-/* EEPROM address */
-#define ADDR_COUNTER_TOTAL 0x0
-#define ADDR_COUNTER_TEMP 0x4
-
 /* Defined values */
 #define LCD_WIDTH 16
 #define LCD_HEIGHT 2
@@ -181,12 +177,12 @@ namespace com
                         //
                         // First line: hour
                         //
-                        this->cleanScreenLine(0);
                         DateTime now = this->getRtc()->now();
                         string s = "";
                         s += Number::twoDigit(now.hour()) +
                                 ":" + Number::twoDigit(now.minute()) +
                                 ":" + Number::twoDigit(now.second());
+                        this->cleanScreenLine(0);
                         this->screen->setCursor(0, 0);
                         this->screen->write(s.c_str());
                     }
@@ -204,7 +200,6 @@ namespace com
                         //
                         // Second line: temp and humidity
                         //
-                        this->cleanScreenLine(1);
                         float h = this->weatherBuffer->getHumidity();
                         float t = this->weatherBuffer->getTemperature();
                         String s = "";
@@ -217,6 +212,7 @@ namespace com
                         // Humidity
                         s += "H:" + (isnan(h) ? String("-") : String(round(h)) + "%");
 
+                        this->cleanScreenLine(1);
                         this->screen->setCursor(0, 1);
                         this->screen->write(s.c_str());
                     }

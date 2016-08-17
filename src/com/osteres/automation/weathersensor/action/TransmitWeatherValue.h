@@ -48,8 +48,8 @@ namespace com {
                             Packet * packet = new Packet(this->from);
 
                             // Prepare data
-                            packet->setDataLong1(this->buffer->getTemperature() * 100); // Temperature
-                            packet->setDataLong2(this->buffer->getHumidity()); // Hmidity
+                            packet->setDataLong1((long)round(this->buffer->getTemperature() * 100)); // Temperature
+                            packet->setDataLong2((long)round(this->buffer->getHumidity())); // Hmidity
                             packet->setCommand(Command::DATA);
                             packet->setTarget(this->to);
 
