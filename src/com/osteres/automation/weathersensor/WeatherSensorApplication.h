@@ -28,6 +28,8 @@
 #include <com/osteres/automation/transmission/Receiver.h>
 #include <com/osteres/automation/weathersensor/action/ActionManager.h>
 #include <com/osteres/arduino/util/StringConverter.h>
+#include <com/osteres/automation/weathersensor/component/WeatherBuffer.h>
+#include <com/osteres/automation/weathersensor/action/TransmitWeatherValue.h>
 
 using com::osteres::util::formatter::Number;
 using com::osteres::automation::Application;
@@ -37,6 +39,8 @@ using com::osteres::automation::arduino::transmission::ArduinoRequester;
 using com::osteres::automation::transmission::Receiver;
 using com::osteres::automation::weathersensor::action::ActionManager;
 using com::osteres::arduino::util::StringConverter;
+using com::osteres::automation::weathersensor::component::WeatherBuffer;
+using com::osteres::automation::weathersensor::action::TransmitWeatherValue;
 
 namespace com
 {
@@ -58,7 +62,6 @@ namespace com
                      */
                     WeatherSensorApplication(DHT * sensor, LiquidCrystal * screen, RTC_DS1307 * rtc, Transmitter * transmitter) {
                         this->screen = screen;
-                        this->sensor = sensor;
                         this->rtc = rtc;
                         this->transmitter = transmitter;
 
@@ -70,6 +73,9 @@ namespace com
 
                         // Create action manager
                         this->actionManager = new ActionManager(this->getScreen());
+
+                        // Create weather buffer
+                        this->weatherBuffer = new WeatherBuffer(sensor);
                     }
 
                     /**
@@ -81,6 +87,12 @@ namespace com
                         if (this->actionManager != NULL) {
                             delete this->actionManager;
                             this->actionManager = NULL;
+                        }
+
+                        // Remove weather buffer
+                        if (this->weatherBuffer != NULL) {
+                            delete this->weatherBuffer;
+                            this->weatherBuffer = NULL;
                         }
                     }
 
@@ -94,7 +106,7 @@ namespace com
                         //this->rtc->adjust(DateTime(2016, 6, 2, 21, 29, 00));
 
                         // Init DHT
-                        this->sensor->begin();
+                        this->weatherBuffer->getSensor()->begin();
 
                         // Init screen
                         this->screen->begin(16, 2);
@@ -117,6 +129,14 @@ namespace com
                         // Here, listen (action manager process packet received)
                         this->transmitter->listen();
 
+                        // Test data buffer
+                        if (this->weatherBuffer->isOutdated()) {
+                            this->sendData();
+
+                            // Time to listen another response
+                            this->transmitter->listen();
+                        }
+
                         // Refresh LCD every interval (line 1)
                         if (millis() - this->timePointScreen1 > this->getIntervalScreenRefresh1()) {
                             this->displayScreenState1();
@@ -128,6 +148,26 @@ namespace com
 
                         // Wait 100ms
                         delay(100);
+                    }
+
+                    /**
+                     * Send data to server
+                     */
+                    void sendData()
+                    {
+                        // Prepare action
+                        TransmitWeatherValue * action = new TransmitWeatherValue(SENSOR, Identity::MASTER, this->transmitter, this->weatherBuffer);
+
+                        // Process
+                        action->execute();
+
+                        // Reset buffer if successfully transmitted
+                        if (action->isSuccess() || IGNORE_PACKET_SUCCESS_RESPONSE) {
+                            this->weatherBuffer->reset();
+                        }
+
+                        // Free memory
+                        delete action;
                     }
 
                     /**
@@ -165,8 +205,8 @@ namespace com
                         // Second line: temp and humidity
                         //
                         this->cleanScreenLine(1);
-                        float h = this->getHumidity();
-                        float t = this->getTemperature();
+                        float h = this->weatherBuffer->getHumidity();
+                        float t = this->weatherBuffer->getTemperature();
                         String s = "";
 
                         // Temp
@@ -195,23 +235,6 @@ namespace com
                     }
 
                     /**
-                     * Get humidity value
-                     */
-                    float getHumidity(bool force = false)
-                    {
-                        return this->sensor->readHumidity(force);
-                    }
-
-                    /**
-                     * Get temperature value
-                     * If fahrenheit param set to true, return value in Fahrenheit unit
-                     */
-                    float getTemperature(bool fahrenheit = false, bool force = false)
-                    {
-                        return this->sensor->readTemperature(fahrenheit, force);
-                    }
-
-                    /**
                      * Get RTC
                      */
                     RTC_DS1307 * getRtc() {
@@ -234,10 +257,11 @@ namespace com
                     }
 
                     /**
-                     * Get sensor
+                     * Get weather buffer
                      */
-                    DHT * getSensor() {
-                        return this->sensor;
+                    WeatherBuffer * getWeatherBuffer()
+                    {
+                        return this->weatherBuffer;
                     }
 
                     /**
@@ -286,9 +310,9 @@ namespace com
                     Transmitter * transmitter = NULL;
 
                     /**
-                     * Weather sensor
+                     * Weather buffer
                      */
-                    DHT * sensor = NULL;
+                    WeatherBuffer * weatherBuffer = NULL;
 
                     /**
                      * Action manager

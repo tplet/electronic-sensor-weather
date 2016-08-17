@@ -65,10 +65,11 @@ void setup() {
     // Setup transmitter
     transmitter.setup();
 
-    // Setup
+    // Setup (configuration)
     application.setup();
     application.setIntervalScreenRefresh1(100); // 0.1s
     application.setIntervalScreenRefresh2(30000); // 30s
+    application.getWeatherBuffer()->setBufferDelay(30000); // 30s
 }
 
 //Packet * packet;
