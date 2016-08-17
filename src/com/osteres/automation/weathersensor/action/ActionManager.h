@@ -9,6 +9,7 @@
 
 #include <Arduino.h>
 #include <LiquidCrystal.h>
+#include <string>
 #include <com/osteres/automation/transmission/packet/Command.h>
 #include <com/osteres/automation/transmission/packet/CommandString.h>
 #include <com/osteres/automation/transmission/packet/Packet.h>
@@ -18,6 +19,7 @@ using com::osteres::automation::transmission::packet::Command;
 using com::osteres::automation::transmission::packet::CommandString;
 using com::osteres::automation::transmission::packet::Packet;
 using com::osteres::automation::action::ActionManagerBase;
+using std::string;
 
 namespace com
 {
@@ -45,18 +47,16 @@ namespace com
                          */
                         virtual void processPacket(Packet * packet)
                         {
-                            ActionManagerBase::processPacket(packet);
-
-                            String text = CommandString::toString(packet->getCommand());
+                            string text = CommandString::toString(packet->getCommand());
                             switch (packet->getCommand()) {
                                 case Command::DATA:
-                                    text += ":" + String(packet->getDataLong1());
+                                    text += ":" + packet->getDataLong1();
                                     break;
                                 default:
                                     break;
                             }
 
-                            this->displayScreenPacket(text);
+                            this->displayScreenPacket(String(text.c_str()));
                         }
 
                         /**

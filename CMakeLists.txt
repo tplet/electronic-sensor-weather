@@ -18,8 +18,13 @@ project(${NAME})
 file(GLOB_RECURSE FILES_CPP "src/*.cpp")
 file(GLOB_RECURSE FILES_H "src/*.h")
 
-# Arduino libraries to include
-#set(ARDSLIBS Time Print)
+
+## Dependencies:
+# common-arduino
+add_subdirectory(./vendors/common-arduino/)
+# RTC
+#list(APPEND FILES_CPP ${RTClib_FILES_CPP})
+#list(APPEND FILES_H ${RTClib_FILES_H})
 
 # Hardware libraries
 #include_directories(${ARDUINO_PLATFORM_PATH}/ARDUINO_PLATFORM/libraries)
@@ -31,14 +36,13 @@ generate_arduino_firmware(
         HDRS ${FILES_H}
         BOARD ${BOARD}
         PORT ${PORT}
-        ARDLIBS ${ARDSLIBS}
+        ARDLIBS Wire SPI LiquidCrystal
+        LIBS common-arduino
 #        NO_AUTOLIBS
 )
-
-# Dependencies
-add_subdirectory(./vendors/common-arduino/)
-target_link_libraries(${EXECUTABLE} common-arduino)
 
 # Add src directory to "include path"
 target_include_directories(${EXECUTABLE} PUBLIC ./src)
 
+# StandardCplusplus (add root path of this library to include path)
+target_include_directories(${EXECUTABLE} PUBLIC ./vendors/common-arduino/vendors/common/vendors/StandardCplusplus)

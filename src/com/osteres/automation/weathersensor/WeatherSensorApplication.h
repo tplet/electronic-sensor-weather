@@ -20,21 +20,22 @@
 #include <LiquidCrystal.h>
 #include <com/osteres/util/formatter/Number.h>
 #include <com/osteres/automation/Application.h>
-#include <com/osteres/automation/memory/Value.h>
 #include <com/osteres/automation/sensor/Identity.h>
 #include <com/osteres/automation/transmission/Transmitter.h>
 #include <com/osteres/automation/transmission/Requester.h>
+#include <com/osteres/automation/arduino/transmission/ArduinoRequester.h>
 #include <com/osteres/automation/transmission/Receiver.h>
-#include <com/osteres/automation/packetdisplay/action/ActionManager.h>
+#include <com/osteres/automation/weathersensor/action/ActionManager.h>
+#include <com/osteres/arduino/util/StringConverter.h>
 
 using com::osteres::util::formatter::Number;
 using com::osteres::automation::Application;
-using com::osteres::automation::memory::Value;
 using com::osteres::automation::sensor::Identity;
 using com::osteres::automation::transmission::Transmitter;
-using com::osteres::automation::transmission::Requester;
+using com::osteres::automation::arduino::transmission::ArduinoRequester;
 using com::osteres::automation::transmission::Receiver;
 using com::osteres::automation::weathersensor::action::ActionManager;
+using com::osteres::arduino::util::StringConverter;
 
 namespace com
 {
@@ -70,7 +71,7 @@ namespace com
                     /**
                      * Destructor
                      */
-                    ~PacketDisplayApplication()
+                    ~WeatherSensorApplication()
                     {
                         // Remove action manager
                         if (this->actionManager != NULL) {
@@ -94,8 +95,8 @@ namespace com
                         this->displayScreenState();
 
                         // Transmission
-                        this->transmitter->getRequester()->setRTC(this->getRtc());
-                        this->transmitter->setActionManager(this->getActionManager());
+                        static_cast<ArduinoRequester *>(this->transmitter->getRequester())->setRTC(this->getRtc());
+                        //this->transmitter->setActionManager(this->getActionManager());
 
                         Serial.println(F("PacketDisplayApplication: Setup executed."));
                     }
@@ -132,10 +133,10 @@ namespace com
                         DateTime now = this->getRtc()->now();
 
                         // Content to display
-                        String s = "";
-                        s += Number::twoDigit(now.hour()) + ":" + Number::twoDigit(now.minute()) + ":" + Number::twoDigit(now.second());
-                        //s += " M:" + String(2048 - freeMemory());
-                        //s += " S:" + String(sizeof(Packet)); // Get 32
+                        string s = "";
+                        s += Number::twoDigit(now.hour()) +
+                                ":" + Number::twoDigit(now.minute()) +
+                                ":" + Number::twoDigit(now.second());
 
                         // Display to screen
                         this->screen->setCursor(0, 0);

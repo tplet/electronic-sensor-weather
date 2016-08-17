@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <StandardCplusplus.h>
 #include <SPI.h>
 #include "RF24/nRF24L01.h"
 #include <RF24/RF24.h>
@@ -6,10 +7,12 @@
 #include <LiquidCrystal.h>
 #include <com/osteres/automation/weathersensor/WeatherSensorApplication.h>
 #include <com/osteres/automation/transmission/Transmitter.h>
+#include <com/osteres/automation/arduino/transmission/ArduinoRequester.h>
 
 
 using com::osteres::automation::weathersensor::WeatherSensorApplication;
 using com::osteres::automation::transmission::Transmitter;
+using com::osteres::automation::arduino::transmission::ArduinoRequester;
 using com::osteres::automation::transmission::packet::Packet;
 using com::osteres::automation::transmission::packet::Command;
 
@@ -49,6 +52,9 @@ WeatherSensorApplication application(&lcd, &rtc, &transmitter);
  */
 void setup() {
     Serial.begin(9600);
+
+    // Set requester manually
+    transmitter.setRequester(new ArduinoRequester(transmitter.getRadio(), transmitter.getWritingChannel()));
 
     // Setup transmitter
     transmitter.setup();
