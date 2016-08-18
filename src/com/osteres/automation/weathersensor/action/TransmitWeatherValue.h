@@ -48,10 +48,11 @@ namespace com {
                             Packet * packet = new Packet(this->from);
 
                             // Prepare data
-                            packet->setDataLong1((long)round(this->buffer->getTemperature() * 100)); // Temperature
-                            packet->setDataLong2((long)round(this->buffer->getHumidity())); // Hmidity
+                            packet->setDataLong1(round(this->buffer->getTemperature() * 100)); // Temperature
+                            packet->setDataLong2(round(this->buffer->getHumidity())); // Humidity
                             packet->setCommand(Command::DATA);
                             packet->setTarget(this->to);
+                            packet->setLast(true);
 
                             // Transmit packet
                             this->transmitter->send(packet);
