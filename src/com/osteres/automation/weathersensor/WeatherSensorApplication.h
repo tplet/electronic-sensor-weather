@@ -205,12 +205,12 @@ namespace com
                         String s = "";
 
                         // Temp
-                        s += "T:" + (isnan(t) ? String("-") : String(round(t * 10) / 10) + "*C");
+                        s += "T:" + (isnan(t) ? String("-") : String(round(t * 10) / (double)10, 1) + "*C");
 
                         s += " ";
 
                         // Humidity
-                        s += "H:" + (isnan(h) ? String("-") : String(round(h)) + "%");
+                        s += "H:" + (isnan(h) ? String("-") : String((double)round(h), 0) + "%");
 
                         this->cleanScreenLine(1);
                         this->screen->setCursor(0, 1);
