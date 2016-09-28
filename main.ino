@@ -23,6 +23,8 @@ using com::osteres::automation::transmission::packet::Command;
 /* Pin for DHT sensor and DHT type */
 #define DHT_PIN  2
 #define DHT_TYPE DHT22
+/* Address for identifier */
+#define ADDRESS_IDENTIFIER 0x00
 
 /**
  * Vars
@@ -51,7 +53,7 @@ DHT sensor(DHT_PIN, DHT_TYPE);
 // Transmission (master mode)
 Transmitter transmitter(&radio, WeatherSensorApplication::SENSOR, false);
 // Application
-WeatherSensorApplication application(&sensor, &lcd, &rtc, &transmitter);
+WeatherSensorApplication application(&sensor, &lcd, &rtc, &transmitter, ADDRESS_IDENTIFIER);
 
 /**
  * Initialize

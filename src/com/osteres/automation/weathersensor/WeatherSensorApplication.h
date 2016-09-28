@@ -16,7 +16,7 @@
 #include <LiquidCrystal.h>
 #include <DHT.h>
 #include <com/osteres/util/formatter/Number.h>
-#include <com/osteres/automation/Application.h>
+#include <com/osteres/automation/arduino/ArduinoApplication.h>
 #include <com/osteres/automation/sensor/Identity.h>
 #include <com/osteres/automation/transmission/Transmitter.h>
 #include <com/osteres/automation/transmission/Requester.h>
@@ -28,7 +28,7 @@
 #include <com/osteres/automation/weathersensor/action/TransmitWeatherValue.h>
 
 using com::osteres::util::formatter::Number;
-using com::osteres::automation::Application;
+using com::osteres::automation::arduino::ArduinoApplication;
 using com::osteres::automation::sensor::Identity;
 using com::osteres::automation::transmission::Transmitter;
 using com::osteres::automation::arduino::transmission::ArduinoRequester;
@@ -46,7 +46,7 @@ namespace com
         {
             namespace weathersensor
             {
-                class WeatherSensorApplication : public Application  {
+                class WeatherSensorApplication : public ArduinoApplication  {
                 public:
                     /**
                      * Sensor identifier
@@ -56,7 +56,14 @@ namespace com
                     /**
                      * Constructor
                      */
-                    WeatherSensorApplication(DHT * sensor, LiquidCrystal * screen, RTC_DS1307 * rtc, Transmitter * transmitter) {
+                    WeatherSensorApplication(
+                        DHT * sensor,
+                        LiquidCrystal * screen,
+                        RTC_DS1307 * rtc,
+                        Transmitter * transmitter,
+                        int addressIdentifier
+                    ) : ArduinoApplication(addressIdentifier)
+                    {
                         this->screen = screen;
                         this->rtc = rtc;
                         this->transmitter = transmitter;
@@ -99,7 +106,7 @@ namespace com
 
                         // Init rtc
                         this->rtc->begin();
-                        //this->rtc->adjust(DateTime(2016, 6, 2, 21, 29, 00));
+//                        this->rtc->adjust(DateTime(2016, 9, 21, 23, 23, 00));
 
                         // Init DHT
                         this->weatherBuffer->getSensor()->begin();
