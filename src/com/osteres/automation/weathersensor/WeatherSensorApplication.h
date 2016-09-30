@@ -60,9 +60,8 @@ namespace com
                         DHT * sensor,
                         LiquidCrystal * screen,
                         RTC_DS1307 * rtc,
-                        Transmitter * transmitter,
-                        int addressIdentifier
-                    ) : ArduinoApplication(addressIdentifier)
+                        Transmitter * transmitter
+                    ) : ArduinoApplication(WeatherSensorApplication::SENSOR)
                     {
                         this->screen = screen;
                         this->rtc = rtc;
@@ -102,7 +101,11 @@ namespace com
                     /**
                      * Setup application
                      */
-                    virtual void setup() {
+                    virtual void setup()
+                    {
+                        // Setup transmitter properties
+                        this->transmitter->setPropertySensorType(this->getPropertyType());
+                        this->transmitter->setPropertySensorIdentifier(this->getPropertyIdentifier());
 
                         // Init rtc
                         this->rtc->begin();
