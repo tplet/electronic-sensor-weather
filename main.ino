@@ -51,7 +51,7 @@ DHT sensor(DHT_PIN, DHT_TYPE);
 // Transmission (master mode)
 Transmitter transmitter(&radio, false);
 // Application
-WeatherSensorApplication application(&sensor, &lcd, &rtc, &transmitter);
+WeatherSensorApplication application(&transmitter, &sensor, &lcd, &rtc);
 
 /**
  * Initialize

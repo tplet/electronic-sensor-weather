@@ -13,12 +13,14 @@
 #include <com/osteres/automation/transmission/packet/Command.h>
 #include <com/osteres/automation/transmission/packet/CommandString.h>
 #include <com/osteres/automation/transmission/packet/Packet.h>
-#include <com/osteres/automation/action/ActionManagerBase.h>
+#include <com/osteres/automation/arduino/action/ArduinoActionManager.h>
+#include <com/osteres/automation/arduino/action/SensorIdentifierAction.h>
 
 using com::osteres::automation::transmission::packet::Command;
 using com::osteres::automation::transmission::packet::CommandString;
 using com::osteres::automation::transmission::packet::Packet;
-using com::osteres::automation::action::ActionManagerBase;
+using com::osteres::automation::arduino::action::ArduinoActionManager;
+using com::osteres::automation::arduino::action::SensorIdentifierAction;
 using std::string;
 
 namespace com
@@ -31,14 +33,13 @@ namespace com
             {
                 namespace action
                 {
-                    class ActionManager : public ActionManagerBase
+                    class ActionManager : public ArduinoActionManager
                     {
                     public:
                         /**
                          * Constructor
                          */
-                        ActionManager(LiquidCrystal * screen)
-                        {
+                        ActionManager(LiquidCrystal * screen) : ArduinoActionManager() {
                             this->screen = screen;
                         }
 
@@ -47,6 +48,9 @@ namespace com
                          */
                         virtual void processPacket(Packet * packet)
                         {
+                            // Parent
+                            ArduinoActionManager::processPacket(packet);
+
 
                         }
 

@@ -18,7 +18,6 @@
 #include <com/osteres/util/formatter/Number.h>
 #include <com/osteres/automation/arduino/ArduinoApplication.h>
 #include <com/osteres/automation/sensor/Identity.h>
-#include <com/osteres/automation/transmission/Transmitter.h>
 #include <com/osteres/automation/transmission/Requester.h>
 #include <com/osteres/automation/arduino/transmission/ArduinoRequester.h>
 #include <com/osteres/automation/transmission/Receiver.h>
@@ -30,7 +29,6 @@
 using com::osteres::util::formatter::Number;
 using com::osteres::automation::arduino::ArduinoApplication;
 using com::osteres::automation::sensor::Identity;
-using com::osteres::automation::transmission::Transmitter;
 using com::osteres::automation::arduino::transmission::ArduinoRequester;
 using com::osteres::automation::transmission::Receiver;
 using com::osteres::automation::weathersensor::action::ActionManager;
@@ -57,15 +55,14 @@ namespace com
                      * Constructor
                      */
                     WeatherSensorApplication(
+                        Transmitter * transmitter,
                         DHT * sensor,
                         LiquidCrystal * screen,
-                        RTC_DS1307 * rtc,
-                        Transmitter * transmitter
-                    ) : ArduinoApplication(WeatherSensorApplication::SENSOR)
+                        RTC_DS1307 * rtc
+                    ) : ArduinoApplication(WeatherSensorApplication::SENSOR, transmitter)
                     {
                         this->screen = screen;
                         this->rtc = rtc;
-                        this->transmitter = transmitter;
 
                         // Init
                         this->intervalScreenRefresh1 = 1000 * 30; // 30s
@@ -74,7 +71,7 @@ namespace com
                         this->timePointScreen2 = millis();
 
                         // Create action manager
-                        this->actionManager = new ActionManager(this->getScreen());
+                        this->setActionManager(new ActionManager(this->getScreen()));
 
                         // Create weather buffer
                         this->weatherBuffer = new WeatherBuffer(sensor);
@@ -85,12 +82,6 @@ namespace com
                      */
                     ~WeatherSensorApplication()
                     {
-                        // Remove action manager
-                        if (this->actionManager != NULL) {
-                            delete this->actionManager;
-                            this->actionManager = NULL;
-                        }
-
                         // Remove weather buffer
                         if (this->weatherBuffer != NULL) {
                             delete this->weatherBuffer;
@@ -103,9 +94,8 @@ namespace com
                      */
                     virtual void setup()
                     {
-                        // Setup transmitter properties
-                        this->transmitter->setPropertySensorType(this->getPropertyType());
-                        this->transmitter->setPropertySensorIdentifier(this->getPropertyIdentifier());
+                        // Parent
+                        ArduinoApplication::setup();
 
                         // Init rtc
                         this->rtc->begin();
@@ -130,7 +120,12 @@ namespace com
                     /**
                      * Process application
                      */
-                    virtual void process() {
+                    virtual void process()
+                    {
+                        // Request an identifier if needed
+                        if (this->isNeedIdentifier()) {
+                            this->requestForAnIdentifier();
+                        }
 
                         // Here, listen (action manager process packet received)
                         this->transmitter->listen();
@@ -248,14 +243,6 @@ namespace com
                     }
 
                     /**
-                     * Get action manager
-                     */
-                    ActionManager * getActionManager()
-                    {
-                        return this->actionManager;
-                    }
-
-                    /**
                      * Get screen
                      */
                     LiquidCrystal * getScreen() {
@@ -311,19 +298,9 @@ namespace com
                     LiquidCrystal * screen = NULL;
 
                     /**
-                     * Transmitter
-                     */
-                    Transmitter * transmitter = NULL;
-
-                    /**
                      * Weather buffer
                      */
                     WeatherBuffer * weatherBuffer = NULL;
-
-                    /**
-                     * Action manager
-                     */
-                    ActionManager * actionManager = NULL;
 
                     /**
                      * Time point for lcd display (line 1)
