@@ -138,6 +138,7 @@ namespace com
                         // Refresh DateTime from server (every day)
                         if (millis() - this->timePointDateTime > DATETIME_UPDATE) {
                             this->requestForDateTime();
+                            this->timePointDateTime = millis();
 
                             // Listen for response
                             this->transmitter->listen();
