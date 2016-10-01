@@ -49,9 +49,9 @@ DHT sensor(DHT_PIN, DHT_TYPE);
  * Prepare object manager
  */
 // Transmission (master mode)
-Transmitter transmitter(&radio, WeatherSensorApplication::SENSOR, false);
+Transmitter transmitter(&radio, false);
 // Application
-WeatherSensorApplication application(&sensor, &lcd, &rtc, &transmitter);
+WeatherSensorApplication application(&transmitter, &rtc, &sensor, &lcd);
 
 /**
  * Initialize

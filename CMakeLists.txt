@@ -35,7 +35,7 @@ generate_arduino_firmware(
     HDRS ${FILES_H}
     BOARD ${BOARD}
     PORT ${PORT}
-    ARDLIBS Wire SPI LiquidCrystal
+    ARDLIBS Wire SPI EEPROM LiquidCrystal
     LIBS common-arduino DHT
 #   NO_AUTOLIBS
 )

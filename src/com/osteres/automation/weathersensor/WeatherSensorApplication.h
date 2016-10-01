@@ -9,18 +9,16 @@
 #define LCD_WIDTH 16
 #define LCD_HEIGHT 2
 #define IGNORE_PACKET_SUCCESS_RESPONSE true
+#define DATETIME_UPDATE 86400000 // 1 day
 
 
 #include <Arduino.h>
-#include <RTClib/RTClib.h>
 #include <LiquidCrystal.h>
 #include <DHT.h>
 #include <com/osteres/util/formatter/Number.h>
-#include <com/osteres/automation/Application.h>
+#include <com/osteres/automation/arduino/ArduinoApplication.h>
 #include <com/osteres/automation/sensor/Identity.h>
-#include <com/osteres/automation/transmission/Transmitter.h>
 #include <com/osteres/automation/transmission/Requester.h>
-#include <com/osteres/automation/arduino/transmission/ArduinoRequester.h>
 #include <com/osteres/automation/transmission/Receiver.h>
 #include <com/osteres/automation/weathersensor/action/ActionManager.h>
 #include <com/osteres/arduino/util/StringConverter.h>
@@ -28,10 +26,8 @@
 #include <com/osteres/automation/weathersensor/action/TransmitWeatherValue.h>
 
 using com::osteres::util::formatter::Number;
-using com::osteres::automation::Application;
+using com::osteres::automation::arduino::ArduinoApplication;
 using com::osteres::automation::sensor::Identity;
-using com::osteres::automation::transmission::Transmitter;
-using com::osteres::automation::arduino::transmission::ArduinoRequester;
 using com::osteres::automation::transmission::Receiver;
 using com::osteres::automation::weathersensor::action::ActionManager;
 using com::osteres::arduino::util::StringConverter;
@@ -46,7 +42,7 @@ namespace com
         {
             namespace weathersensor
             {
-                class WeatherSensorApplication : public Application  {
+                class WeatherSensorApplication : public ArduinoApplication  {
                 public:
                     /**
                      * Sensor identifier
@@ -56,19 +52,25 @@ namespace com
                     /**
                      * Constructor
                      */
-                    WeatherSensorApplication(DHT * sensor, LiquidCrystal * screen, RTC_DS1307 * rtc, Transmitter * transmitter) {
+                    WeatherSensorApplication(
+                        Transmitter * transmitter,
+                        RTC_DS1307 * rtc,
+                        DHT * sensor,
+                        LiquidCrystal * screen
+                    ) : ArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc)
+                    {
                         this->screen = screen;
-                        this->rtc = rtc;
-                        this->transmitter = transmitter;
 
                         // Init
                         this->intervalScreenRefresh1 = 1000 * 30; // 30s
                         this->intervalScreenRefresh2 = 1000 * 30; // 30s
                         this->timePointScreen1 = millis();
                         this->timePointScreen2 = millis();
+                        this->timePointDateTime = -DATETIME_UPDATE;
 
                         // Create action manager
-                        this->actionManager = new ActionManager(this->getScreen());
+                        ActionManager * actionManager = new ActionManager(this->getScreen());
+                        this->setActionManager(actionManager);
 
                         // Create weather buffer
                         this->weatherBuffer = new WeatherBuffer(sensor);
@@ -79,12 +81,6 @@ namespace com
                      */
                     ~WeatherSensorApplication()
                     {
-                        // Remove action manager
-                        if (this->actionManager != NULL) {
-                            delete this->actionManager;
-                            this->actionManager = NULL;
-                        }
-
                         // Remove weather buffer
                         if (this->weatherBuffer != NULL) {
                             delete this->weatherBuffer;
@@ -95,11 +91,10 @@ namespace com
                     /**
                      * Setup application
                      */
-                    virtual void setup() {
-
-                        // Init rtc
-                        this->rtc->begin();
-                        //this->rtc->adjust(DateTime(2016, 6, 2, 21, 29, 00));
+                    virtual void setup()
+                    {
+                        // Parent
+                        ArduinoApplication::setup();
 
                         // Init DHT
                         this->weatherBuffer->getSensor()->begin();
@@ -111,7 +106,6 @@ namespace com
                         this->displayScreenState2();
 
                         // Transmission
-                        static_cast<ArduinoRequester *>(this->transmitter->getRequester())->setRTC(this->getRtc());
                         this->transmitter->setActionManager(this->getActionManager());
 
                         Serial.println(F("WeatherSensorApplication: Setup executed."));
@@ -120,7 +114,15 @@ namespace com
                     /**
                      * Process application
                      */
-                    virtual void process() {
+                    virtual void process()
+                    {
+                        // Request an identifier if needed
+                        if (this->isNeedIdentifier()) {
+                            this->requestForAnIdentifier();
+
+                            // Listen for response
+                            this->transmitter->listen();
+                        }
 
                         // Here, listen (action manager process packet received)
                         this->transmitter->listen();
@@ -130,6 +132,15 @@ namespace com
                             this->sendData();
 
                             // Time to listen another response
+                            this->transmitter->listen();
+                        }
+
+                        // Refresh DateTime from server (every day)
+                        if (millis() - this->timePointDateTime > DATETIME_UPDATE) {
+                            this->requestForDateTime();
+                            this->timePointDateTime = millis();
+
+                            // Listen for response
                             this->transmitter->listen();
                         }
 
@@ -177,7 +188,7 @@ namespace com
                         //
                         // First line: hour
                         //
-                        DateTime now = this->getRtc()->now();
+                        DateTime now = this->getRTC()->now();
                         string s = "";
                         s += Number::twoDigit(now.hour()) +
                                 ":" + Number::twoDigit(now.minute()) +
@@ -231,21 +242,6 @@ namespace com
                     }
 
                     /**
-                     * Get RTC
-                     */
-                    RTC_DS1307 * getRtc() {
-                        return this->rtc;
-                    }
-
-                    /**
-                     * Get action manager
-                     */
-                    ActionManager * getActionManager()
-                    {
-                        return this->actionManager;
-                    }
-
-                    /**
                      * Get screen
                      */
                     LiquidCrystal * getScreen() {
@@ -291,29 +287,14 @@ namespace com
                 protected:
 
                     /**
-                     * RTC object for DateTime
-                     */
-                    RTC_DS1307 * rtc = NULL;
-
-                    /**
                      * Screen
                      */
                     LiquidCrystal * screen = NULL;
 
                     /**
-                     * Transmitter
-                     */
-                    Transmitter * transmitter = NULL;
-
-                    /**
                      * Weather buffer
                      */
                     WeatherBuffer * weatherBuffer = NULL;
-
-                    /**
-                     * Action manager
-                     */
-                    ActionManager * actionManager = NULL;
 
                     /**
                      * Time point for lcd display (line 1)
@@ -324,6 +305,11 @@ namespace com
                      * Time point for lcd display (line 2)
                      */
                     unsigned long timePointScreen2;
+
+                    /**
+                     * Time point to request an update for DateTime
+                     */
+                    long timePointDateTime;
 
                     /**
                      * Interval for refresh screen (for line 1)
