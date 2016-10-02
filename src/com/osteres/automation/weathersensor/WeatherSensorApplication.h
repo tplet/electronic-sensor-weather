@@ -127,8 +127,8 @@ namespace com
                         // Here, listen (action manager process packet received)
                         this->transmitter->listen();
 
-                        // Test data buffer
-                        if (this->weatherBuffer->isOutdated()) {
+                        // Test data buffer (only if identifier has been allocated)
+                        if (!this->isNeedIdentifier() && this->weatherBuffer->isOutdated()) {
                             this->sendData();
 
                             // Time to listen another response
