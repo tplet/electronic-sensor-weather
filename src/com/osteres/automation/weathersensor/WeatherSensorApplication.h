@@ -163,7 +163,13 @@ namespace com
                     void sendData()
                     {
                         // Prepare action
-                        TransmitWeatherValue * action = new TransmitWeatherValue(SENSOR, Identity::MASTER, this->transmitter, this->weatherBuffer);
+                        TransmitWeatherValue * action = new TransmitWeatherValue(
+                            this->getPropertyType(),
+                            this->getPropertyIdentifier(),
+                            Identity::MASTER,
+                            this->transmitter,
+                            this->weatherBuffer
+                        );
 
                         // Process
                         action->execute();

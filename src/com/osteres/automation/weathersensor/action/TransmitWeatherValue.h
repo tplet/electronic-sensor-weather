@@ -11,12 +11,16 @@
 #include <com/osteres/automation/transmission/Transmitter.h>
 #include <com/osteres/automation/transmission/packet/Packet.h>
 #include <com/osteres/automation/transmission/packet/Command.h>
+#include <com/osteres/automation/arduino/memory/StoredProperty.h>
+#include <com/osteres/automation/memory/Property.h>
 
 using com::osteres::automation::weathersensor::component::WeatherBuffer;
 using com::osteres::automation::action::Action;
 using com::osteres::automation::transmission::Transmitter;
 using com::osteres::automation::transmission::packet::Packet;
 using com::osteres::automation::transmission::packet::Command;
+using com::osteres::automation::memory::Property;
+using com::osteres::automation::arduino::memory::StoredProperty;
 
 namespace com {
     namespace osteres {
@@ -28,9 +32,15 @@ namespace com {
                         /**
                          * Constructor
                          */
-                        TransmitWeatherValue(unsigned char from, unsigned char to, Transmitter * transmitter, WeatherBuffer * buffer)
-                        {
-                            this->from = from;
+                        TransmitWeatherValue(
+                            Property<unsigned char> * propertyType,
+                            StoredProperty<unsigned char> * propertyIdentifier,
+                            unsigned char to,
+                            Transmitter * transmitter,
+                            WeatherBuffer * buffer
+                        ) {
+                            this->propertyType = propertyType;
+                            this->propertyIdentifier = propertyIdentifier;
                             this->to = to;
                             this->transmitter = transmitter;
                             this->buffer = buffer;
@@ -45,9 +55,10 @@ namespace com {
                             // parent
                             Action::execute();
 
-                            Packet * packet = new Packet(this->from);
+                            Packet * packet = new Packet(this->propertyType->get());
 
                             // Prepare data
+                            packet->setSourceIdentifier(this->propertyIdentifier->get());
                             packet->setDataLong1(round(this->buffer->getTemperature() * 100)); // Temperature
                             packet->setDataLong2(round(this->buffer->getHumidity())); // Humidity
                             packet->setCommand(Command::DATA);
@@ -66,9 +77,14 @@ namespace com {
 
                     protected:
                         /**
-                         * Sensor identifier
+                         * Sensor type identifier property
                          */
-                        unsigned char from;
+                        Property<unsigned char> * propertyType = NULL;
+
+                        /**
+                         * Sensor identifier property
+                         */
+                        StoredProperty<unsigned char> * propertyIdentifier = NULL;
 
                         /**
                          * Target of transmission
