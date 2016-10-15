@@ -116,7 +116,7 @@ namespace com
                      */
                     virtual void process()
                     {
-                        // Request an identifier if needed
+                        // Request an identifier if needed. Note: Not mandatory anymore
                         if (this->isNeedIdentifier()) {
                             this->requestForAnIdentifier();
 
