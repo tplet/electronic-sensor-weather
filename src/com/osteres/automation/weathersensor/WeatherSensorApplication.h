@@ -120,8 +120,8 @@ namespace com
                         if (this->isNeedIdentifier()) {
                             this->requestForAnIdentifier();
 
-                            // Listen for response
-                            this->transmitter->listen();
+                            // Listen for response (10s)
+                            this->transmitter->listen(10000);
                         }
 
                         // Here, listen (action manager process packet received)
