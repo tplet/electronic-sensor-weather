@@ -66,7 +66,7 @@ namespace com
                         this->intervalScreenRefresh2 = 1000 * 30; // 30s
                         this->timePointScreen1 = millis();
                         this->timePointScreen2 = millis();
-                        this->timePointDateTime = -DATETIME_UPDATE;
+                        this->timePointDateTime = -DATETIME_UPDATE + 10000; // Datetime request send in 10s
 
                         // Create action manager
                         ActionManager * actionManager = new ActionManager(this->getScreen());
