@@ -1,6 +1,6 @@
 [submodule "vendors/common-arduino"]
 	path = vendors/common-arduino
-	url = http://gitlab.osteres.com/electronic/common-arduino.git
+	url = git@github.com:osteres/electronic-common-arduino.git
 [submodule "vendors/DHT"]
 	path = vendors/DHT
 	url = git@github.com:osteres/DHT-sensor-library.git
