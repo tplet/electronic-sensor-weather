@@ -13,8 +13,10 @@
 
 
 #include <Arduino.h>
+#include <StandardCplusplus.h>
 #include <LiquidCrystal.h>
 #include <DHT.h>
+#include <string>
 #include <com/osteres/util/formatter/Number.h>
 #include <com/osteres/automation/arduino/ArduinoApplication.h>
 #include <com/osteres/automation/sensor/Identity.h>
@@ -33,6 +35,7 @@ using com::osteres::automation::weathersensor::action::ActionManager;
 using com::osteres::arduino::util::StringConverter;
 using com::osteres::automation::weathersensor::component::WeatherBuffer;
 using com::osteres::automation::weathersensor::action::TransmitWeatherValue;
+using std::string;
 
 namespace com
 {
@@ -120,28 +123,25 @@ namespace com
                         if (this->isNeedIdentifier()) {
                             this->requestForAnIdentifier();
 
-                            // Listen for response (10s)
-                            this->transmitter->listen(10000);
-                        }
+                            // Send and listen
+                            this->transmitter->srs(10000); // 10s
 
-                        // Here, listen (action manager process packet received)
-                        this->transmitter->listen();
+                        } // Process
+                        else {
 
-                        // Test data buffer (only if identifier has been allocated)
-                        if (!this->isNeedIdentifier() && this->weatherBuffer->isOutdated()) {
-                            this->sendData();
+                            // Test data buffer (only if identifier has been allocated)
+                            if (!this->isNeedIdentifier() && this->weatherBuffer->isOutdated()) {
+                                this->requestForSendData();
+                            }
 
-                            // Time to listen another response
-                            this->transmitter->listen();
-                        }
+                            // Refresh DateTime from server (every day)
+                            if (millis() - this->timePointDateTime > DATETIME_UPDATE) {
+                                this->requestForDateTime();
+                                this->timePointDateTime = millis();
+                            }
 
-                        // Refresh DateTime from server (every day)
-                        if (millis() - this->timePointDateTime > DATETIME_UPDATE) {
-                            this->requestForDateTime();
-                            this->timePointDateTime = millis();
-
-                            // Listen for response
-                            this->transmitter->listen();
+                            // Send and listen
+                            this->transmitter->srs();
                         }
 
                         // Refresh LCD every interval (line 1)
@@ -160,27 +160,11 @@ namespace com
                     /**
                      * Send data to server
                      */
-                    void sendData()
+                    void requestForSendData()
                     {
-                        // Prepare action
-                        TransmitWeatherValue * action = new TransmitWeatherValue(
-                            this->getPropertyType(),
-                            this->getPropertyIdentifier(),
-                            Identity::MASTER,
-                            this->transmitter,
-                            this->weatherBuffer
-                        );
-
                         // Process
-                        action->execute();
-
-                        // Reset buffer if successfully transmitted
-                        if (action->isSuccess() || IGNORE_PACKET_SUCCESS_RESPONSE) {
-                            this->weatherBuffer->reset();
-                        }
-
-                        // Free memory
-                        delete action;
+                        this->getActionWeather()->execute();
+                        this->weatherBuffer->reset();
                     }
 
                     /**
@@ -195,13 +179,23 @@ namespace com
                         // First line: hour
                         //
                         DateTime now = this->getRTC()->now();
-                        string s = "";
-                        s += Number::twoDigit(now.hour()) +
+                        string sHour = "";
+                        sHour += Number::twoDigit(now.hour()) +
                                 ":" + Number::twoDigit(now.minute()) +
                                 ":" + Number::twoDigit(now.second());
+
+                        // Display identifier
+                        unsigned char id = this->getPropertyIdentifier()->get();
+                        string sId = Number::twoDigit(id);
+                        string sSpace = "";
+                        for (unsigned char i = 0; i < LCD_WIDTH - sHour.length() - sId.length(); i++) {
+                            sSpace += " ";
+                        }
+
+                        // Write to screen
                         this->cleanScreenLine(0);
                         this->screen->setCursor(0, 0);
-                        this->screen->write(s.c_str());
+                        this->screen->write((sHour + sSpace + sId).c_str());
                     }
 
                     /**
@@ -290,6 +284,24 @@ namespace com
                         return this->intervalScreenRefresh2;
                     }
 
+                    /**
+                     * Get action weather
+                     */
+                    TransmitWeatherValue * getActionWeather()
+                    {
+                        if (this->actionWeather == NULL) {
+                            this->actionWeather = new TransmitWeatherValue(
+                                this->getPropertyType(),
+                                this->getPropertyIdentifier(),
+                                Identity::MASTER,
+                                this->transmitter,
+                                this->weatherBuffer
+                            );
+                        }
+
+                        return this->actionWeather;
+                    }
+
                 protected:
 
                     /**
@@ -301,6 +313,11 @@ namespace com
                      * Weather buffer
                      */
                     WeatherBuffer * weatherBuffer = NULL;
+
+                    /**
+                     * Action to transmit weather
+                     */
+                    TransmitWeatherValue * actionWeather = NULL;
 
                     /**
                      * Time point for lcd display (line 1)

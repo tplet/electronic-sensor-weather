@@ -6,6 +6,7 @@
 #define COM_OSTERES_AUTOMATION_WEATHERSENSOR_ACTION_TRANSMITWEATHERVALUE_H
 
 #include <Arduino.h>
+#include <StandardCplusplus.h>
 #include <com/osteres/automation/weathersensor/component/WeatherBuffer.h>
 #include <com/osteres/automation/action/Action.h>
 #include <com/osteres/automation/transmission/Transmitter.h>
@@ -63,13 +64,9 @@ namespace com {
                             packet->setDataLong2(round(this->buffer->getHumidity())); // Humidity
                             packet->setCommand(Command::DATA);
                             packet->setTarget(this->to);
-                            packet->setLast(true);
 
                             // Transmit packet
-                            this->transmitter->sendAndConfirm(packet);
-
-                            // Free memory
-                            delete packet;
+                            this->transmitter->add(packet);
 
                             this->setSuccess();
                             return this->isSuccess();

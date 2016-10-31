@@ -8,6 +8,7 @@
 #define LCD_WIDTH 16
 
 #include <Arduino.h>
+#include <StandardCplusplus.h>
 #include <LiquidCrystal.h>
 #include <string>
 #include <com/osteres/automation/transmission/packet/Command.h>
