@@ -124,7 +124,7 @@ namespace com
                             this->requestForAnIdentifier();
 
                             // Send and listen
-                            this->transmitter->srs(10000); // 10s
+                            this->transmitter->srs(3000); // 3s
 
                         } // Process
                         else {
