@@ -89,6 +89,11 @@ namespace com
                             delete this->weatherBuffer;
                             this->weatherBuffer = NULL;
                         }
+                        // Remove weather action
+                        if (this->actionWeather != NULL) {
+                            delete this->actionWeather;
+                            this->actionWeather = NULL;
+                        }
                     }
 
                     /**
