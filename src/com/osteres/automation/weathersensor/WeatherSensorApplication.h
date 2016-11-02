@@ -13,8 +13,10 @@
 
 
 #include <Arduino.h>
+#include <StandardCplusplus.h>
 #include <LiquidCrystal.h>
 #include <DHT.h>
+#include <string>
 #include <com/osteres/util/formatter/Number.h>
 #include <com/osteres/automation/arduino/ArduinoApplication.h>
 #include <com/osteres/automation/sensor/Identity.h>
@@ -33,6 +35,7 @@ using com::osteres::automation::weathersensor::action::ActionManager;
 using com::osteres::arduino::util::StringConverter;
 using com::osteres::automation::weathersensor::component::WeatherBuffer;
 using com::osteres::automation::weathersensor::action::TransmitWeatherValue;
+using std::string;
 
 namespace com
 {
@@ -59,21 +62,21 @@ namespace com
                         LiquidCrystal * screen
                     ) : ArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc)
                     {
-                        this->screen = screen;
+                        this->construct(sensor);
+                        this->setScreen(screen);
+                        this->setUseScreen(true);
+                    }
 
-                        // Init
-                        this->intervalScreenRefresh1 = 1000 * 30; // 30s
-                        this->intervalScreenRefresh2 = 1000 * 30; // 30s
-                        this->timePointScreen1 = millis();
-                        this->timePointScreen2 = millis();
-                        this->timePointDateTime = -DATETIME_UPDATE + 10000; // Datetime request send in 10s
-
-                        // Create action manager
-                        ActionManager * actionManager = new ActionManager(this->getScreen());
-                        this->setActionManager(actionManager);
-
-                        // Create weather buffer
-                        this->weatherBuffer = new WeatherBuffer(sensor);
+                    /**
+                     * Constructor
+                     */
+                    WeatherSensorApplication(
+                        Transmitter * transmitter,
+                        RTC_DS1307 * rtc,
+                        DHT * sensor
+                    ) : ArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc)
+                    {
+                        this->construct(sensor);
                     }
 
                     /**
@@ -85,6 +88,11 @@ namespace com
                         if (this->weatherBuffer != NULL) {
                             delete this->weatherBuffer;
                             this->weatherBuffer = NULL;
+                        }
+                        // Remove weather action
+                        if (this->actionWeather != NULL) {
+                            delete this->actionWeather;
+                            this->actionWeather = NULL;
                         }
                     }
 
@@ -100,10 +108,7 @@ namespace com
                         this->weatherBuffer->getSensor()->begin();
 
                         // Init screen
-                        this->screen->begin(16, 2);
-                        this->screen->display();
-                        this->displayScreenState1();
-                        this->displayScreenState2();
+                        this->setupScreen();
 
                         // Transmission
                         this->transmitter->setActionManager(this->getActionManager());
@@ -120,36 +125,33 @@ namespace com
                         if (this->isNeedIdentifier()) {
                             this->requestForAnIdentifier();
 
-                            // Listen for response (10s)
-                            this->transmitter->listen(10000);
-                        }
+                            // Send and listen
+                            this->transmitter->srs(3000); // 3s
 
-                        // Here, listen (action manager process packet received)
-                        this->transmitter->listen();
+                        } // Process
+                        else {
 
-                        // Test data buffer (only if identifier has been allocated)
-                        if (!this->isNeedIdentifier() && this->weatherBuffer->isOutdated()) {
-                            this->sendData();
+                            // Test data buffer (only if identifier has been allocated)
+                            if (!this->isNeedIdentifier() && this->weatherBuffer->isOutdated()) {
+                                this->requestForSendData();
+                            }
 
-                            // Time to listen another response
-                            this->transmitter->listen();
-                        }
+                            // Refresh DateTime from server (every day)
+                            if (millis() - this->timePointDateTime > DATETIME_UPDATE) {
+                                this->requestForDateTime();
+                                this->timePointDateTime = millis();
+                            }
 
-                        // Refresh DateTime from server (every day)
-                        if (millis() - this->timePointDateTime > DATETIME_UPDATE) {
-                            this->requestForDateTime();
-                            this->timePointDateTime = millis();
-
-                            // Listen for response
-                            this->transmitter->listen();
+                            // Send and listen
+                            this->transmitter->srs();
                         }
 
                         // Refresh LCD every interval (line 1)
-                        if (millis() - this->timePointScreen1 > this->getIntervalScreenRefresh1()) {
+                        if (this->isUseScreen() && millis() - this->timePointScreen1 > this->getIntervalScreenRefresh1()) {
                             this->displayScreenState1();
                         }
                         // Refresh LCD every interval (line 2)
-                        if (millis() - this->timePointScreen2 > this->getIntervalScreenRefresh2()) {
+                        if (this->isUseScreen() && millis() - this->timePointScreen2 > this->getIntervalScreenRefresh2()) {
                             this->displayScreenState2();
                         }
 
@@ -160,27 +162,11 @@ namespace com
                     /**
                      * Send data to server
                      */
-                    void sendData()
+                    void requestForSendData()
                     {
-                        // Prepare action
-                        TransmitWeatherValue * action = new TransmitWeatherValue(
-                            this->getPropertyType(),
-                            this->getPropertyIdentifier(),
-                            Identity::MASTER,
-                            this->transmitter,
-                            this->weatherBuffer
-                        );
-
                         // Process
-                        action->execute();
-
-                        // Reset buffer if successfully transmitted
-                        if (action->isSuccess() || IGNORE_PACKET_SUCCESS_RESPONSE) {
-                            this->weatherBuffer->reset();
-                        }
-
-                        // Free memory
-                        delete action;
+                        this->getActionWeather()->execute();
+                        this->weatherBuffer->reset();
                     }
 
                     /**
@@ -195,13 +181,23 @@ namespace com
                         // First line: hour
                         //
                         DateTime now = this->getRTC()->now();
-                        string s = "";
-                        s += Number::twoDigit(now.hour()) +
+                        string sHour = "";
+                        sHour += Number::twoDigit(now.hour()) +
                                 ":" + Number::twoDigit(now.minute()) +
                                 ":" + Number::twoDigit(now.second());
+
+                        // Display identifier
+                        unsigned char id = this->getPropertyIdentifier()->get();
+                        string sId = Number::twoDigit(id);
+                        string sSpace = "";
+                        for (unsigned char i = 0; i < LCD_WIDTH - sHour.length() - sId.length(); i++) {
+                            sSpace += " ";
+                        }
+
+                        // Write to screen
                         this->cleanScreenLine(0);
                         this->screen->setCursor(0, 0);
-                        this->screen->write(s.c_str());
+                        this->screen->write((sHour + sSpace + sId).c_str());
                     }
 
                     /**
@@ -248,10 +244,34 @@ namespace com
                     }
 
                     /**
+                     * Flag to indicate if screen is used
+                     */
+                    bool isUseScreen()
+                    {
+                        return this->useScreen;
+                    }
+
+                    /**
+                     * Indicate if screen is used
+                     */
+                    void setUseScreen(bool flag)
+                    {
+                        this->useScreen = flag;
+                    }
+
+                    /**
                      * Get screen
                      */
                     LiquidCrystal * getScreen() {
                         return this->screen;
+                    }
+
+                    /**
+                     * Set screen
+                     */
+                    void setScreen(LiquidCrystal * screen)
+                    {
+                        this->screen = screen;
                     }
 
                     /**
@@ -290,7 +310,58 @@ namespace com
                         return this->intervalScreenRefresh2;
                     }
 
+                    /**
+                     * Get action weather
+                     */
+                    TransmitWeatherValue * getActionWeather()
+                    {
+                        if (this->actionWeather == NULL) {
+                            this->actionWeather = new TransmitWeatherValue(
+                                this->getPropertyType(),
+                                this->getPropertyIdentifier(),
+                                Identity::MASTER,
+                                this->transmitter,
+                                this->weatherBuffer
+                            );
+                        }
+
+                        return this->actionWeather;
+                    }
+
                 protected:
+
+                    /**
+                     * Common part constructor
+                     */
+                    void construct(DHT * sensor)
+                    {
+                        // Init
+                        this->intervalScreenRefresh1 = 1000 * 30; // 30s
+                        this->intervalScreenRefresh2 = 1000 * 30; // 30s
+                        this->timePointScreen1 = millis();
+                        this->timePointScreen2 = millis();
+                        this->timePointDateTime = -DATETIME_UPDATE + 10000; // Datetime request send in 10s
+
+                        // Create action manager
+                        ActionManager * actionManager = new ActionManager();
+                        this->setActionManager(actionManager);
+
+                        // Create weather buffer
+                        this->weatherBuffer = new WeatherBuffer(sensor);
+                    }
+
+                    /**
+                     * Setup screen
+                     */
+                    void setupScreen()
+                    {
+                        if (this->isUseScreen()) {
+                            this->screen->begin(LCD_WIDTH, LCD_HEIGHT);
+                            this->screen->display();
+                            this->displayScreenState1();
+                            this->displayScreenState2();
+                        }
+                    }
 
                     /**
                      * Screen
@@ -298,9 +369,19 @@ namespace com
                     LiquidCrystal * screen = NULL;
 
                     /**
+                     * Flag to indicate if screen is used
+                     */
+                    bool useScreen;
+
+                    /**
                      * Weather buffer
                      */
                     WeatherBuffer * weatherBuffer = NULL;
+
+                    /**
+                     * Action to transmit weather
+                     */
+                    TransmitWeatherValue * actionWeather = NULL;
 
                     /**
                      * Time point for lcd display (line 1)
