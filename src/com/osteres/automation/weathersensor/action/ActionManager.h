@@ -9,7 +9,6 @@
 
 #include <Arduino.h>
 #include <StandardCplusplus.h>
-#include <LiquidCrystal.h>
 #include <string>
 #include <com/osteres/automation/transmission/packet/Command.h>
 #include <com/osteres/automation/transmission/packet/CommandString.h>
@@ -40,8 +39,7 @@ namespace com
                         /**
                          * Constructor
                          */
-                        ActionManager(LiquidCrystal * screen) : ArduinoActionManager() {
-                            this->screen = screen;
+                        ActionManager() : ArduinoActionManager() {
                         }
 
                         /**
@@ -55,33 +53,8 @@ namespace com
 
                         }
 
-                        /**
-                         * Clean line on screen
-                         */
-                        void cleanScreenLine(uint8_t line)
-                        {
-                            this->screen->setCursor(0, line);
-                            String spaces = F("");
-                            for (int i = 0; i < LCD_WIDTH ; i++) {
-                                spaces += F(" ");
-                            }
-                            this->screen->write(spaces.c_str());
-                        }
-
-                        /**
-                         * Get screen
-                         */
-                        LiquidCrystal * getScreen()
-                        {
-                            return this->screen;
-                        }
-
                     protected:
 
-                        /**
-                         * Screen
-                         */
-                        LiquidCrystal * screen = NULL;
                     };
                 }
             }

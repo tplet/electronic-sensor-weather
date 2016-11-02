@@ -62,21 +62,21 @@ namespace com
                         LiquidCrystal * screen
                     ) : ArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc)
                     {
-                        this->screen = screen;
+                        this->construct(sensor);
+                        this->setScreen(screen);
+                        this->setUseScreen(true);
+                    }
 
-                        // Init
-                        this->intervalScreenRefresh1 = 1000 * 30; // 30s
-                        this->intervalScreenRefresh2 = 1000 * 30; // 30s
-                        this->timePointScreen1 = millis();
-                        this->timePointScreen2 = millis();
-                        this->timePointDateTime = -DATETIME_UPDATE + 10000; // Datetime request send in 10s
-
-                        // Create action manager
-                        ActionManager * actionManager = new ActionManager(this->getScreen());
-                        this->setActionManager(actionManager);
-
-                        // Create weather buffer
-                        this->weatherBuffer = new WeatherBuffer(sensor);
+                    /**
+                     * Constructor
+                     */
+                    WeatherSensorApplication(
+                        Transmitter * transmitter,
+                        RTC_DS1307 * rtc,
+                        DHT * sensor
+                    ) : ArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc)
+                    {
+                        this->construct(sensor);
                     }
 
                     /**
@@ -108,10 +108,7 @@ namespace com
                         this->weatherBuffer->getSensor()->begin();
 
                         // Init screen
-                        this->screen->begin(16, 2);
-                        this->screen->display();
-                        this->displayScreenState1();
-                        this->displayScreenState2();
+                        this->setupScreen();
 
                         // Transmission
                         this->transmitter->setActionManager(this->getActionManager());
@@ -150,11 +147,11 @@ namespace com
                         }
 
                         // Refresh LCD every interval (line 1)
-                        if (millis() - this->timePointScreen1 > this->getIntervalScreenRefresh1()) {
+                        if (this->isUseScreen() && millis() - this->timePointScreen1 > this->getIntervalScreenRefresh1()) {
                             this->displayScreenState1();
                         }
                         // Refresh LCD every interval (line 2)
-                        if (millis() - this->timePointScreen2 > this->getIntervalScreenRefresh2()) {
+                        if (this->isUseScreen() && millis() - this->timePointScreen2 > this->getIntervalScreenRefresh2()) {
                             this->displayScreenState2();
                         }
 
@@ -247,10 +244,34 @@ namespace com
                     }
 
                     /**
+                     * Flag to indicate if screen is used
+                     */
+                    bool isUseScreen()
+                    {
+                        return this->useScreen;
+                    }
+
+                    /**
+                     * Indicate if screen is used
+                     */
+                    void setUseScreen(bool flag)
+                    {
+                        this->useScreen = flag;
+                    }
+
+                    /**
                      * Get screen
                      */
                     LiquidCrystal * getScreen() {
                         return this->screen;
+                    }
+
+                    /**
+                     * Set screen
+                     */
+                    void setScreen(LiquidCrystal * screen)
+                    {
+                        this->screen = screen;
                     }
 
                     /**
@@ -310,9 +331,47 @@ namespace com
                 protected:
 
                     /**
+                     * Common part constructor
+                     */
+                    void construct(DHT * sensor)
+                    {
+                        // Init
+                        this->intervalScreenRefresh1 = 1000 * 30; // 30s
+                        this->intervalScreenRefresh2 = 1000 * 30; // 30s
+                        this->timePointScreen1 = millis();
+                        this->timePointScreen2 = millis();
+                        this->timePointDateTime = -DATETIME_UPDATE + 10000; // Datetime request send in 10s
+
+                        // Create action manager
+                        ActionManager * actionManager = new ActionManager();
+                        this->setActionManager(actionManager);
+
+                        // Create weather buffer
+                        this->weatherBuffer = new WeatherBuffer(sensor);
+                    }
+
+                    /**
+                     * Setup screen
+                     */
+                    void setupScreen()
+                    {
+                        if (this->isUseScreen()) {
+                            this->screen->begin(LCD_WIDTH, LCD_HEIGHT);
+                            this->screen->display();
+                            this->displayScreenState1();
+                            this->displayScreenState2();
+                        }
+                    }
+
+                    /**
                      * Screen
                      */
                     LiquidCrystal * screen = NULL;
+
+                    /**
+                     * Flag to indicate if screen is used
+                     */
+                    bool useScreen;
 
                     /**
                      * Weather buffer
