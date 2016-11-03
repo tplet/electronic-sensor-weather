@@ -1,6 +1,6 @@
 [submodule "vendors/common-arduino"]
 	path = vendors/common-arduino
-	url = git@github.com:osteres/electronic-common-arduino.git
+	url = git@github.com:tplet/electronic-common-arduino.git
 [submodule "vendors/DHT"]
 	path = vendors/DHT
-	url = git@github.com:osteres/DHT-sensor-library.git
+	url = git@github.com:tplet/DHT-sensor-library.git
