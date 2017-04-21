@@ -6,8 +6,6 @@
 #define COM_OSTERES_AUTOMATION_WEATHERSENSOR_WEATHERSENSORAPPLICATION_H
 
 /* Defined values */
-#define LCD_WIDTH 16
-#define LCD_HEIGHT 2
 #define IGNORE_PACKET_SUCCESS_RESPONSE true
 #define DATETIME_UPDATE 86400000 // 1 day
 
@@ -18,7 +16,7 @@
 #include <DHT.h>
 #include <string>
 #include <com/osteres/util/formatter/Number.h>
-#include <com/osteres/automation/arduino/ArduinoApplication.h>
+#include <com/osteres/automation/arduino/ScreenArduinoApplication.h>
 #include <com/osteres/automation/sensor/Identity.h>
 #include <com/osteres/automation/transmission/Requester.h>
 #include <com/osteres/automation/transmission/Receiver.h>
@@ -28,7 +26,7 @@
 #include <com/osteres/automation/weathersensor/action/TransmitWeatherValue.h>
 
 using com::osteres::util::formatter::Number;
-using com::osteres::automation::arduino::ArduinoApplication;
+using com::osteres::automation::arduino::ScreenArduinoApplication;
 using com::osteres::automation::sensor::Identity;
 using com::osteres::automation::transmission::Receiver;
 using com::osteres::automation::weathersensor::action::ActionManager;
@@ -45,7 +43,7 @@ namespace com
         {
             namespace weathersensor
             {
-                class WeatherSensorApplication : public ArduinoApplication  {
+                class WeatherSensorApplication : public ScreenArduinoApplication  {
                 public:
                     /**
                      * Sensor identifier
@@ -60,11 +58,9 @@ namespace com
                         RTC_DS1307 * rtc,
                         DHT * sensor,
                         LiquidCrystal * screen
-                    ) : ArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc)
+                    ) : ScreenArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc, screen)
                     {
                         this->construct(sensor);
-                        this->setScreen(screen);
-                        this->setUseScreen(true);
                     }
 
                     /**
@@ -74,7 +70,7 @@ namespace com
                         Transmitter * transmitter,
                         RTC_DS1307 * rtc,
                         DHT * sensor
-                    ) : ArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc)
+                    ) : ScreenArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc)
                     {
                         this->construct(sensor);
                     }
@@ -102,13 +98,16 @@ namespace com
                     virtual void setup()
                     {
                         // Parent
-                        ArduinoApplication::setup();
+                        ScreenArduinoApplication::setup();
 
                         // Init DHT
                         this->weatherBuffer->getSensor()->begin();
 
-                        // Init screen
-                        this->setupScreen();
+                        // Display screen
+                        if (this->isUseScreen()) {
+                            this->displayScreenState1();
+                            this->displayScreenState2();
+                        }
 
                         // Transmission
                         this->transmitter->setActionManager(this->getActionManager());
@@ -190,14 +189,14 @@ namespace com
                         unsigned char id = this->getPropertyIdentifier()->get();
                         string sId = Number::twoDigit(id);
                         string sSpace = "";
-                        for (unsigned char i = 0; i < LCD_WIDTH - sHour.length() - sId.length(); i++) {
+                        for (unsigned char i = 0; i < this->getScreenWidth() - sHour.length() - sId.length(); i++) {
                             sSpace += " ";
                         }
 
                         // Write to screen
                         this->cleanScreenLine(0);
-                        this->screen->setCursor(0, 0);
-                        this->screen->write((sHour + sSpace + sId).c_str());
+                        this->getScreen()->setCursor(0, 0);
+                        this->getScreen()->write((sHour + sSpace + sId).c_str());
                     }
 
                     /**
@@ -226,8 +225,8 @@ namespace com
                         s += "H:" + (isnan(h) ? String("-") : String((double)round(h), 0) + "%");
 
                         this->cleanScreenLine(1);
-                        this->screen->setCursor(0, 1);
-                        this->screen->write(s.c_str());
+                        this->getScreen()->setCursor(0, 1);
+                        this->getScreen()->write(s.c_str());
                     }
 
                     /**
@@ -235,43 +234,12 @@ namespace com
                      */
                     void cleanScreenLine(uint8_t line)
                     {
-                        this->screen->setCursor(0, line);
+                        this->getScreen()->setCursor(0, line);
                         String spaces = F("");
-                        for (int i = 0; i < LCD_WIDTH ; i++) {
+                        for (int i = 0; i < this->getScreenWidth() ; i++) {
                             spaces += F(" ");
                         }
-                        this->screen->write(spaces.c_str());
-                    }
-
-                    /**
-                     * Flag to indicate if screen is used
-                     */
-                    bool isUseScreen()
-                    {
-                        return this->useScreen;
-                    }
-
-                    /**
-                     * Indicate if screen is used
-                     */
-                    void setUseScreen(bool flag)
-                    {
-                        this->useScreen = flag;
-                    }
-
-                    /**
-                     * Get screen
-                     */
-                    LiquidCrystal * getScreen() {
-                        return this->screen;
-                    }
-
-                    /**
-                     * Set screen
-                     */
-                    void setScreen(LiquidCrystal * screen)
-                    {
-                        this->screen = screen;
+                        this->getScreen()->write(spaces.c_str());
                     }
 
                     /**
@@ -340,7 +308,7 @@ namespace com
                         this->intervalScreenRefresh2 = 1000 * 30; // 30s
                         this->timePointScreen1 = millis();
                         this->timePointScreen2 = millis();
-                        this->timePointDateTime = -DATETIME_UPDATE + 10000; // Datetime request send in 10s
+                        this->timePointDateTime = -DATETIME_UPDATE + 10000; // Datetime request send in 10s after boot
 
                         // Create action manager
                         ActionManager * actionManager = new ActionManager();
@@ -349,29 +317,6 @@ namespace com
                         // Create weather buffer
                         this->weatherBuffer = new WeatherBuffer(sensor);
                     }
-
-                    /**
-                     * Setup screen
-                     */
-                    void setupScreen()
-                    {
-                        if (this->isUseScreen()) {
-                            this->screen->begin(LCD_WIDTH, LCD_HEIGHT);
-                            this->screen->display();
-                            this->displayScreenState1();
-                            this->displayScreenState2();
-                        }
-                    }
-
-                    /**
-                     * Screen
-                     */
-                    LiquidCrystal * screen = NULL;
-
-                    /**
-                     * Flag to indicate if screen is used
-                     */
-                    bool useScreen;
 
                     /**
                      * Weather buffer
