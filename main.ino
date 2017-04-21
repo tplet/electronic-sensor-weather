@@ -23,6 +23,8 @@ using com::osteres::automation::transmission::packet::Command;
 /* Pin for DHT sensor and DHT type */
 #define DHT_PIN  2
 #define DHT_TYPE DHT22
+/* Pin for enable/disable screen (analog ping) */
+#define STATE_SCREEN_ANALOG 1
 
 /**
  * Vars
@@ -70,6 +72,9 @@ void setup() {
     application.setIntervalScreenRefresh1(100); // 0.1s
     application.setIntervalScreenRefresh2(5000); // 5s
     application.getWeatherBuffer()->setBufferDelay(30000); // 30s
+
+    // Configure switch for screen
+    application.getScreen()->enableSwitchDetection(STATE_SCREEN_ANALOG, false);
 }
 
 //Packet * packet;

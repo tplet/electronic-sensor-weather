@@ -110,9 +110,9 @@ namespace com
                         // Init DHT
                         this->weatherBuffer->getSensor()->begin();
 
-                        // Enable screen and display firsts lines
-                        if (this->hasScreen()) {
-                            this->getScreen()->enable();
+                        // Display firsts lines
+                        if (this->hasScreen() && this->getScreen()->isEnabled()) {
+                            this->getScreen()->detectSwitch();
                             this->displayScreenState1();
                             this->displayScreenState2();
                         }
@@ -154,16 +154,23 @@ namespace com
                             this->transmitter->srs();
                         }
 
-                        // Screen display
-                        if (this->hasScreen() && this->getScreen()->isEnabled()) {
+                        // Screen treatment
+                        if (this->hasScreen()) {
+                            Screen * screen = this->getScreen();
 
-                            // Refresh LCD every interval (line 1)
-                            if (millis() - this->timePointScreen1 > this->getIntervalScreenRefresh1()) {
-                                this->displayScreenState1();
-                            }
-                            // Refresh LCD every interval (line 2)
-                            if (millis() - this->timePointScreen2 > this->getIntervalScreenRefresh2()) {
-                                this->displayScreenState2();
+                            // Switch detection
+                            screen->detectSwitch();
+
+                            // Display if enabled
+                            if (screen->isEnabled()) {
+                                // Refresh LCD every interval (line 1)
+                                if (millis() - this->timePointScreen1 > this->getIntervalScreenRefresh1()) {
+                                    this->displayScreenState1();
+                                }
+                                // Refresh LCD every interval (line 2)
+                                if (millis() - this->timePointScreen2 > this->getIntervalScreenRefresh2()) {
+                                    this->displayScreenState2();
+                                }
                             }
                         }
 
