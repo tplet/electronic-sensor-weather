@@ -16,7 +16,7 @@
 #include <DHT.h>
 #include <string>
 #include <com/osteres/util/formatter/Number.h>
-#include <com/osteres/automation/arduino/ScreenArduinoApplication.h>
+#include <com/osteres/automation/arduino/ArduinoApplication.h>
 #include <com/osteres/automation/sensor/Identity.h>
 #include <com/osteres/automation/transmission/Requester.h>
 #include <com/osteres/automation/transmission/Receiver.h>
@@ -24,15 +24,17 @@
 #include <com/osteres/arduino/util/StringConverter.h>
 #include <com/osteres/automation/weathersensor/component/WeatherBuffer.h>
 #include <com/osteres/automation/weathersensor/action/TransmitWeatherValue.h>
+#include <com/osteres/automation/arduino/component/Screen.h>
 
 using com::osteres::util::formatter::Number;
-using com::osteres::automation::arduino::ScreenArduinoApplication;
+using com::osteres::automation::arduino::ArduinoApplication;
 using com::osteres::automation::sensor::Identity;
 using com::osteres::automation::transmission::Receiver;
 using com::osteres::automation::weathersensor::action::ActionManager;
 using com::osteres::arduino::util::StringConverter;
 using com::osteres::automation::weathersensor::component::WeatherBuffer;
 using com::osteres::automation::weathersensor::action::TransmitWeatherValue;
+using com::osteres::automation::arduino::component::Screen;
 using std::string;
 
 namespace com
@@ -43,7 +45,7 @@ namespace com
         {
             namespace weathersensor
             {
-                class WeatherSensorApplication : public ScreenArduinoApplication  {
+                class WeatherSensorApplication : public ArduinoApplication  {
                 public:
                     /**
                      * Sensor identifier
@@ -57,10 +59,10 @@ namespace com
                         Transmitter * transmitter,
                         RTC_DS1307 * rtc,
                         DHT * sensor,
-                        LiquidCrystal * screen
-                    ) : ScreenArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc, screen)
+                        LiquidCrystal * screenDevice
+                    ) : ArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc)
                     {
-                        this->construct(sensor);
+                        this->construct(sensor, screenDevice);
                     }
 
                     /**
@@ -70,7 +72,7 @@ namespace com
                         Transmitter * transmitter,
                         RTC_DS1307 * rtc,
                         DHT * sensor
-                    ) : ScreenArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc)
+                    ) : ArduinoApplication(WeatherSensorApplication::SENSOR, transmitter, rtc)
                     {
                         this->construct(sensor);
                     }
@@ -90,6 +92,11 @@ namespace com
                             delete this->actionWeather;
                             this->actionWeather = NULL;
                         }
+                        // Remove screen
+                        if (this->screen != NULL) {
+                            delete this->screen;
+                            this->screen = NULL;
+                        }
                     }
 
                     /**
@@ -98,16 +105,18 @@ namespace com
                     virtual void setup()
                     {
                         // Parent
-                        ScreenArduinoApplication::setup();
+                        ArduinoApplication::setup();
 
                         // Init DHT
                         this->weatherBuffer->getSensor()->begin();
 
-                        // Display screen
-                        if (this->isUseScreen()) {
+                        // Enable screen and display firsts lines
+                        if (this->hasScreen()) {
+                            this->getScreen()->enable();
                             this->displayScreenState1();
                             this->displayScreenState2();
                         }
+
 
                         // Transmission
                         this->transmitter->setActionManager(this->getActionManager());
@@ -145,13 +154,17 @@ namespace com
                             this->transmitter->srs();
                         }
 
-                        // Refresh LCD every interval (line 1)
-                        if (this->isUseScreen() && millis() - this->timePointScreen1 > this->getIntervalScreenRefresh1()) {
-                            this->displayScreenState1();
-                        }
-                        // Refresh LCD every interval (line 2)
-                        if (this->isUseScreen() && millis() - this->timePointScreen2 > this->getIntervalScreenRefresh2()) {
-                            this->displayScreenState2();
+                        // Screen display
+                        if (this->hasScreen() && this->getScreen()->isEnabled()) {
+
+                            // Refresh LCD every interval (line 1)
+                            if (millis() - this->timePointScreen1 > this->getIntervalScreenRefresh1()) {
+                                this->displayScreenState1();
+                            }
+                            // Refresh LCD every interval (line 2)
+                            if (millis() - this->timePointScreen2 > this->getIntervalScreenRefresh2()) {
+                                this->displayScreenState2();
+                            }
                         }
 
                         // Wait 100ms
@@ -173,30 +186,34 @@ namespace com
                      */
                     void displayScreenState1()
                     {
-                        // Save instant point
-                        this->timePointScreen1 = millis();
+                        if (this->hasScreen() && this->getScreen()->isEnabled()) {
+                            Screen * screen = this->getScreen();
 
-                        //
-                        // First line: hour
-                        //
-                        DateTime now = this->getRTC()->now();
-                        string sHour = "";
-                        sHour += Number::twoDigit(now.hour()) +
-                                ":" + Number::twoDigit(now.minute()) +
-                                ":" + Number::twoDigit(now.second());
+                            // Save instant point
+                            this->timePointScreen1 = millis();
 
-                        // Display identifier
-                        unsigned char id = this->getPropertyIdentifier()->get();
-                        string sId = Number::twoDigit(id);
-                        string sSpace = "";
-                        for (unsigned char i = 0; i < this->getScreenWidth() - sHour.length() - sId.length(); i++) {
-                            sSpace += " ";
+                            //
+                            // First line: hour
+                            //
+                            DateTime now = this->getRTC()->now();
+                            string sHour = "";
+                            sHour += Number::twoDigit(now.hour()) +
+                                     ":" + Number::twoDigit(now.minute()) +
+                                     ":" + Number::twoDigit(now.second());
+
+                            // Display identifier
+                            unsigned char id = this->getPropertyIdentifier()->get();
+                            string sId = Number::twoDigit(id);
+                            string sSpace = "";
+                            for (unsigned char i = 0; i < screen->getWidth() - sHour.length() - sId.length(); i++) {
+                                sSpace += " ";
+                            }
+
+                            // Write to screen
+                            this->cleanScreenLine(0);
+                            screen->setCursor(0, 0);
+                            screen->write((sHour + sSpace + sId).c_str());
                         }
-
-                        // Write to screen
-                        this->cleanScreenLine(0);
-                        this->getScreen()->setCursor(0, 0);
-                        this->getScreen()->write((sHour + sSpace + sId).c_str());
                     }
 
                     /**
@@ -206,27 +223,31 @@ namespace com
                      */
                     void displayScreenState2()
                     {
-                        // Save instant point
-                        this->timePointScreen2 = millis();
+                        if (this->hasScreen() && this->getScreen()->isEnabled()) {
+                            Screen * screen = this->getScreen();
 
-                        //
-                        // Second line: temp and humidity
-                        //
-                        float h = this->weatherBuffer->getHumidity();
-                        float t = this->weatherBuffer->getTemperature();
-                        String s = "";
+                            // Save instant point
+                            this->timePointScreen2 = millis();
 
-                        // Temp
-                        s += "T:" + (isnan(t) ? String("-") : String(round(t * 10) / (double)10, 1) + "*C");
+                            //
+                            // Second line: temp and humidity
+                            //
+                            float h = this->weatherBuffer->getHumidity();
+                            float t = this->weatherBuffer->getTemperature();
+                            String s = "";
 
-                        s += " ";
+                            // Temp
+                            s += "T:" + (isnan(t) ? String("-") : String(round(t * 10) / (double) 10, 1) + "*C");
 
-                        // Humidity
-                        s += "H:" + (isnan(h) ? String("-") : String((double)round(h), 0) + "%");
+                            s += " ";
 
-                        this->cleanScreenLine(1);
-                        this->getScreen()->setCursor(0, 1);
-                        this->getScreen()->write(s.c_str());
+                            // Humidity
+                            s += "H:" + (isnan(h) ? String("-") : String((double) round(h), 0) + "%");
+
+                            this->cleanScreenLine(1);
+                            screen->setCursor(0, 1);
+                            screen->write(s.c_str());
+                        }
                     }
 
                     /**
@@ -234,12 +255,16 @@ namespace com
                      */
                     void cleanScreenLine(uint8_t line)
                     {
-                        this->getScreen()->setCursor(0, line);
-                        String spaces = F("");
-                        for (int i = 0; i < this->getScreenWidth() ; i++) {
-                            spaces += F(" ");
+                        if (this->hasScreen() && this->getScreen()->isEnabled()) {
+                            Screen * screen = this->getScreen();
+
+                            screen->setCursor(0, line);
+                            String spaces = F("");
+                            for (int i = 0; i < screen->getWidth() ; i++) {
+                                spaces += F(" ");
+                            }
+                            screen->write(spaces.c_str());
                         }
-                        this->getScreen()->write(spaces.c_str());
                     }
 
                     /**
@@ -296,6 +321,22 @@ namespace com
                         return this->actionWeather;
                     }
 
+                    /**
+                     * Get screen component
+                     */
+                    Screen * getScreen()
+                    {
+                        return this->screen;
+                    }
+
+                    /**
+                     * Flag to indicate if screen exists
+                     */
+                    bool hasScreen()
+                    {
+                        return this->screen != NULL;
+                    }
+
                 protected:
 
                     /**
@@ -319,6 +360,17 @@ namespace com
                     }
 
                     /**
+                     * Common part constructor
+                     */
+                    void construct(DHT * sensor, LiquidCrystal * screenDevice)
+                    {
+                        this->construct(sensor);
+
+                        // Create screen component
+                        this->screen = new Screen(screenDevice);
+                    }
+
+                    /**
                      * Weather buffer
                      */
                     WeatherBuffer * weatherBuffer = NULL;
@@ -327,6 +379,11 @@ namespace com
                      * Action to transmit weather
                      */
                     TransmitWeatherValue * actionWeather = NULL;
+
+                    /**
+                     * Screen component
+                     */
+                    Screen * screen = NULL;
 
                     /**
                      * Time point for lcd display (line 1)
