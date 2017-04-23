@@ -25,6 +25,7 @@
 #include <com/osteres/automation/weathersensor/component/WeatherBuffer.h>
 #include <com/osteres/automation/weathersensor/action/TransmitWeatherValue.h>
 #include <com/osteres/automation/arduino/component/Screen.h>
+#include <com/osteres/automation/arduino/component/BatteryLevel.h>
 
 using com::osteres::util::formatter::Number;
 using com::osteres::automation::arduino::ArduinoApplication;
@@ -35,6 +36,7 @@ using com::osteres::arduino::util::StringConverter;
 using com::osteres::automation::weathersensor::component::WeatherBuffer;
 using com::osteres::automation::weathersensor::action::TransmitWeatherValue;
 using com::osteres::automation::arduino::component::Screen;
+using com::osteres::automation::arduino::component::BatteryLevel;
 using std::string;
 
 namespace com
@@ -200,26 +202,37 @@ namespace com
                             this->timePointScreen1 = millis();
 
                             //
-                            // First line: hour
+                            // First line: hour + battery level + identifier
                             //
+                            string output;
+                            // Display hour
                             DateTime now = this->getRTC()->now();
                             string sHour = "";
                             sHour += Number::twoDigit(now.hour()) +
                                      ":" + Number::twoDigit(now.minute()) +
                                      ":" + Number::twoDigit(now.second());
+                            output += sHour;
+
+                            // Display battery level
+                            if (this->hasBatteryLevel()) {
+                                float bRatio = this->getBatteryLevel()->getRatio();
+                                unsigned int percent = (unsigned int)round(bRatio * 100);
+                                output += " " + Number::twoDigit(percent) + "%";
+                            }
 
                             // Display identifier
                             unsigned char id = this->getPropertyIdentifier()->get();
                             string sId = Number::twoDigit(id);
                             string sSpace = "";
-                            for (unsigned char i = 0; i < screen->getWidth() - sHour.length() - sId.length(); i++) {
+                            for (unsigned char i = 0; i < screen->getWidth() - output.length() - sId.length(); i++) {
                                 sSpace += " ";
                             }
+                            output += sSpace + sId;
 
                             // Write to screen
                             this->cleanScreenLine(0);
                             screen->setCursor(0, 0);
-                            screen->write((sHour + sSpace + sId).c_str());
+                            screen->write(output.c_str());
                         }
                     }
 
@@ -344,6 +357,30 @@ namespace com
                         return this->screen != NULL;
                     }
 
+                    /**
+                     * Flag to indicate if battery level component exists
+                     */
+                    bool hasBatteryLevel()
+                    {
+                        return this->batteryLevel != NULL;
+                    }
+
+                    /**
+                     * Set battery level component
+                     */
+                    void setBatteryLevel(BatteryLevel * batteryLevel)
+                    {
+                        this->batteryLevel = batteryLevel;
+                    }
+
+                    /**
+                     * Get battery level component
+                     */
+                    BatteryLevel * getBatteryLevel()
+                    {
+                        return this->batteryLevel;
+                    }
+
                 protected:
 
                     /**
@@ -391,6 +428,11 @@ namespace com
                      * Screen component
                      */
                     Screen * screen = NULL;
+
+                    /**
+                     * Battery level component
+                     */
+                    BatteryLevel * batteryLevel = NULL;
 
                     /**
                      * Time point for lcd display (line 1)
