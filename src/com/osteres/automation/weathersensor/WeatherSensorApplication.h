@@ -23,6 +23,7 @@
 #include <com/osteres/automation/weathersensor/action/ActionManager.h>
 #include <com/osteres/arduino/util/StringConverter.h>
 #include <com/osteres/automation/weathersensor/component/WeatherBuffer.h>
+#include <com/osteres/automation/arduino/component/DataBuffer.h>
 #include <com/osteres/automation/weathersensor/action/TransmitWeatherValue.h>
 #include <com/osteres/automation/arduino/component/Screen.h>
 #include <com/osteres/automation/arduino/component/BatteryLevel.h>
@@ -34,6 +35,7 @@ using com::osteres::automation::transmission::Receiver;
 using com::osteres::automation::weathersensor::action::ActionManager;
 using com::osteres::arduino::util::StringConverter;
 using com::osteres::automation::weathersensor::component::WeatherBuffer;
+using com::osteres::automation::arduino::component::DataBuffer;
 using com::osteres::automation::weathersensor::action::TransmitWeatherValue;
 using com::osteres::automation::arduino::component::Screen;
 using com::osteres::automation::arduino::component::BatteryLevel;
@@ -89,6 +91,21 @@ namespace com
                             delete this->weatherBuffer;
                             this->weatherBuffer = NULL;
                         }
+                        // Remove datetime point buffer
+                        if (this->pointDateTimeBuffer != NULL) {
+                            delete this->pointDateTimeBuffer;
+                            this->pointDateTimeBuffer = NULL;
+                        }
+                        // Remove screen 1 point buffer
+                        if (this->pointScreen1Buffer != NULL) {
+                            delete this->pointScreen1Buffer;
+                            this->pointScreen1Buffer = NULL;
+                        }
+                        // Remove screen 2 point buffer
+                        if (this->pointScreen2Buffer != NULL) {
+                            delete this->pointScreen2Buffer;
+                            this->pointScreen2Buffer = NULL;
+                        }
                         // Remove weather action
                         if (this->actionWeather != NULL) {
                             delete this->actionWeather;
@@ -117,8 +134,10 @@ namespace com
                             this->getScreen()->detectSwitch();
                             this->displayScreenState1();
                             this->displayScreenState2();
-                        }
 
+                            this->pointScreen1Buffer->reset();
+                            this->pointScreen2Buffer->reset();
+                        }
 
                         // Transmission
                         this->transmitter->setActionManager(this->getActionManager());
@@ -147,9 +166,9 @@ namespace com
                             }
 
                             // Refresh DateTime from server (every day)
-                            if (millis() - this->timePointDateTime > DATETIME_UPDATE) {
+                            if (this->pointDateTimeBuffer->isOutdated()) {
                                 this->requestForDateTime();
-                                this->timePointDateTime = millis();
+                                this->pointDateTimeBuffer->reset();
                             }
 
                             // Send and listen
@@ -166,11 +185,13 @@ namespace com
                             // Display if enabled
                             if (screen->isEnabled()) {
                                 // Refresh LCD every interval (line 1)
-                                if (millis() - this->timePointScreen1 > this->getIntervalScreenRefresh1()) {
+                                if (this->pointScreen1Buffer->isOutdated()) {
+                                    this->pointScreen1Buffer->reset();
                                     this->displayScreenState1();
                                 }
                                 // Refresh LCD every interval (line 2)
-                                if (millis() - this->timePointScreen2 > this->getIntervalScreenRefresh2()) {
+                                if (this->pointScreen2Buffer->isOutdated()) {
+                                    this->pointScreen2Buffer->reset();
                                     this->displayScreenState2();
                                 }
                             }
@@ -197,9 +218,6 @@ namespace com
                     {
                         if (this->hasScreen() && this->getScreen()->isEnabled()) {
                             Screen * screen = this->getScreen();
-
-                            // Save instant point
-                            this->timePointScreen1 = millis();
 
                             //
                             // First line: hour + battery level + identifier
@@ -245,9 +263,6 @@ namespace com
                     {
                         if (this->hasScreen() && this->getScreen()->isEnabled()) {
                             Screen * screen = this->getScreen();
-
-                            // Save instant point
-                            this->timePointScreen2 = millis();
 
                             //
                             // Second line: temp and humidity
@@ -298,34 +313,6 @@ namespace com
                     WeatherBuffer * getWeatherBuffer()
                     {
                         return this->weatherBuffer;
-                    }
-
-                    /**
-                     * Set interval to refresh screen (line 1)
-                     */
-                    void setIntervalScreenRefresh1(unsigned int interval) {
-                        this->intervalScreenRefresh1 = interval;
-                    }
-
-                    /**
-                     * Get interval of screen refresh (line 1)
-                     */
-                    unsigned int getIntervalScreenRefresh1() {
-                        return this->intervalScreenRefresh1;
-                    }
-
-                    /**
-                     * Set interval to refresh screen (line 1)
-                     */
-                    void setIntervalScreenRefresh2(unsigned int interval) {
-                        this->intervalScreenRefresh2 = interval;
-                    }
-
-                    /**
-                     * Get interval of screen refresh (line 1)
-                     */
-                    unsigned int getIntervalScreenRefresh2() {
-                        return this->intervalScreenRefresh2;
                     }
 
                     /**
@@ -393,19 +380,17 @@ namespace com
                      */
                     void construct(DHT * sensor)
                     {
-                        // Init
-                        this->intervalScreenRefresh1 = 1000 * 30; // 30s
-                        this->intervalScreenRefresh2 = 1000 * 30; // 30s
-                        this->timePointScreen1 = millis();
-                        this->timePointScreen2 = millis();
-                        this->timePointDateTime = -DATETIME_UPDATE + 10000; // Datetime request send in 10s after boot
-
                         // Create action manager
                         ActionManager * actionManager = new ActionManager();
                         this->setActionManager(actionManager);
 
                         // Create weather buffer
                         this->weatherBuffer = new WeatherBuffer(sensor);
+
+                        // Buffer points
+                        this->pointDateTimeBuffer = new DataBuffer(DATETIME_UPDATE, 10000); // 10s after boot
+                        this->pointScreen1Buffer = new DataBuffer(1000 * 30); // 30s
+                        this->pointScreen2Buffer = new DataBuffer(1000 * 30); // 30s
                     }
 
                     /**
@@ -425,6 +410,21 @@ namespace com
                     WeatherBuffer * weatherBuffer = NULL;
 
                     /**
+                     * DateTime point buffer
+                     */
+                    DataBuffer * pointDateTimeBuffer = NULL;
+
+                    /**
+                     * Screen point buffer (line 1)
+                     */
+                    DataBuffer * pointScreen1Buffer = NULL;
+
+                    /**
+                     * Screen point buffer (line 2)
+                     */
+                    DataBuffer * pointScreen2Buffer = NULL;
+
+                    /**
                      * Action to transmit weather
                      */
                     TransmitWeatherValue * actionWeather = NULL;
@@ -438,31 +438,6 @@ namespace com
                      * Battery level component
                      */
                     BatteryLevel * batteryLevel = NULL;
-
-                    /**
-                     * Time point for lcd display (line 1)
-                     */
-                    unsigned long timePointScreen1;
-
-                    /**
-                     * Time point for lcd display (line 2)
-                     */
-                    unsigned long timePointScreen2;
-
-                    /**
-                     * Time point to request an update for DateTime
-                     */
-                    long timePointDateTime;
-
-                    /**
-                     * Interval for refresh screen (for line 1)
-                     */
-                    unsigned int intervalScreenRefresh1;
-
-                    /**
-                     * Interval for refresh screen (for line 2)
-                     */
-                    unsigned int intervalScreenRefresh2;
 
                 };
             }
