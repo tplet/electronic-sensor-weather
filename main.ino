@@ -67,19 +67,9 @@ BatteryLevel batteryLevel(PIN_BATTERY_LEVEL_ANALOG);
 void setup() {
     Serial.begin(9600);
 
-    /*
-    // use the 1.1 V internal reference
-    #if defined(__AVR_ATmega2560__)
-    analogReference(INTERNAL1V1);
-    #else
-    analogReference(INTERNAL);
-    #endif
-    */
+    // Read current vcc voltage
     float vcc = readVcc() / 1000.0;
-    Serial.print("Reference voltage: ");
-    Serial.println(vcc);
     batteryLevel.setVcc(vcc);
-
 
     // Set requester manually
     transmitter.setRequester(new ArduinoRequester(transmitter.getRadio(), transmitter.getWritingChannel()));

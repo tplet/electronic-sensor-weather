@@ -252,21 +252,26 @@ namespace com
                             //
                             // Second line: temp and humidity
                             //
-                            float h = this->weatherBuffer->getHumidity();
-                            float t = this->weatherBuffer->getTemperature();
-                            String s = "";
+                            String output = "";
 
                             // Temp
-                            s += "T:" + (isnan(t) ? String("-") : String(round(t * 10) / (double) 10, 1) + "*C");
-
-                            s += " ";
+                            float t = this->weatherBuffer->getTemperature();
+                            output += "T:" + (isnan(t) ? String("-") : String(round(t * 10) / (double) 10, 1) + "*C");
+                            output += " ";
 
                             // Humidity
-                            s += "H:" + (isnan(h) ? String("-") : String((double) round(h), 0) + "%");
+                            float h = this->weatherBuffer->getHumidity();
+                            output += "H:" + (isnan(h) ? String("-") : String((double) round(h), 0) + "%");
+
+                            // Battery voltage
+                            if (this->hasBatteryLevel()) {
+                                output = "";
+                                output += "B:" + String(round(this->getBatteryLevel()->getVoltage() * 100) / (double)100, 2) + "V";
+                            }
 
                             this->cleanScreenLine(1);
                             screen->setCursor(0, 1);
-                            screen->write(s.c_str());
+                            screen->write(output.c_str());
                         }
                     }
 
