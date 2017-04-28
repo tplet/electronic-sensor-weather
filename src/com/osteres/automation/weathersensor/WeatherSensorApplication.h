@@ -373,6 +373,22 @@ namespace com
                         return this->batteryLevel;
                     }
 
+                    /**
+                     * Get Screen point buffer (line 1)
+                     */
+                    DataBuffer * getPointScreen1Buffer()
+                    {
+                        return this->pointScreen1Buffer;
+                    }
+
+                    /**
+                     * Get Screen point buffer (line 2)
+                     */
+                    DataBuffer * getPointScreen2Buffer()
+                    {
+                        return this->pointScreen2Buffer;
+                    }
+
                 protected:
 
                     /**

@@ -79,10 +79,12 @@ void setup() {
 
     // Setup (configuration)
     application.setBatteryLevel(&batteryLevel);
-    application.setup();
-    application.setIntervalScreenRefresh1(100); // 0.1s
-    application.setIntervalScreenRefresh2(5000); // 5s
+    application.getPointScreen1Buffer()->setBufferDelay(100); // 0.1s
+    application.getPointScreen2Buffer()->setBufferDelay(5000); // 5s
     application.getWeatherBuffer()->setBufferDelay(30000); // 30s
+    application.setup();
+    //application.getPointScreen1Buffer()->setOutdated();
+    //application.getPointScreen2Buffer()->setOutdated();
 
     // Configure switch for screen
     application.getScreen()->enableSwitchDetection(PIN_STATE_SCREEN_ANALOG, false);
