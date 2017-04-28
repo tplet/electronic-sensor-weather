@@ -52,7 +52,6 @@ namespace com {
                          */
                         bool execute()
                         {
-                            Serial.println(F("Transmit to server action..."));
                             // parent
                             Action::execute();
 

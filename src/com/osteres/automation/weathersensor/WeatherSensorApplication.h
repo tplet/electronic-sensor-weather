@@ -144,8 +144,6 @@ namespace com
 
                         // Transmission
                         this->transmitter->setActionManager(this->getActionManager());
-
-                        Serial.println(F("WeatherSensorApplication: Setup executed."));
                     }
 
                     /**
@@ -290,6 +288,7 @@ namespace com
                             // Battery voltage
                             if (this->hasBatteryLevel()) {
                                 output = "";
+                                output += "P:" +  String(round(this->getBatteryLevel()->getPinVoltage() * 100) / (double)100, 2) + "V ";
                                 output += "B:" + String(round(this->getBatteryLevel()->getVoltage() * 100) / (double)100, 2) + "V";
                             }
 
