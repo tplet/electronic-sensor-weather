@@ -70,6 +70,9 @@ void setup() {
     // Read current vcc voltage
     float vcc = readVcc() / 1000.0;
     batteryLevel.setVcc(vcc);
+    // Adjust real values of resistors
+    batteryLevel.setResistanceGnd(10.02e3);
+    batteryLevel.setResistanceVcc(3.28e3);
 
     // Set requester manually
     transmitter.setRequester(new ArduinoRequester(transmitter.getRadio(), transmitter.getWritingChannel()));
