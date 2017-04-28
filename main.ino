@@ -83,16 +83,10 @@ void setup() {
     application.getPointScreen2Buffer()->setBufferDelay(5000); // 5s
     application.getWeatherBuffer()->setBufferDelay(30000); // 30s
     application.setup();
-    //application.getPointScreen1Buffer()->setOutdated();
-    //application.getPointScreen2Buffer()->setOutdated();
 
     // Configure switch for screen
     application.getScreen()->enableSwitchDetection(PIN_STATE_SCREEN_ANALOG, false);
 }
-
-//Packet * packet;
-//unsigned int i = 0;
-
 
 /**
  * Loop

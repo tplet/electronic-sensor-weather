@@ -8,6 +8,7 @@
 /* Defined values */
 #define IGNORE_PACKET_SUCCESS_RESPONSE true
 #define DATETIME_UPDATE 86400000 // 1 day
+#define BATTERY_SEND 600000 // 10 minutes
 
 
 #include <Arduino.h>
@@ -26,7 +27,6 @@
 #include <com/osteres/automation/arduino/component/DataBuffer.h>
 #include <com/osteres/automation/weathersensor/action/TransmitWeatherValue.h>
 #include <com/osteres/automation/arduino/component/Screen.h>
-#include <com/osteres/automation/arduino/component/BatteryLevel.h>
 
 using com::osteres::util::formatter::Number;
 using com::osteres::automation::arduino::ArduinoApplication;
@@ -38,7 +38,6 @@ using com::osteres::automation::weathersensor::component::WeatherBuffer;
 using com::osteres::automation::arduino::component::DataBuffer;
 using com::osteres::automation::weathersensor::action::TransmitWeatherValue;
 using com::osteres::automation::arduino::component::Screen;
-using com::osteres::automation::arduino::component::BatteryLevel;
 using std::string;
 
 namespace com
@@ -90,6 +89,10 @@ namespace com
                         if (this->weatherBuffer != NULL) {
                             delete this->weatherBuffer;
                             this->weatherBuffer = NULL;
+                        }
+                        if (this->pointBatteryBuffer != NULL) {
+                            delete this->pointBatteryBuffer;
+                            this->pointBatteryBuffer = NULL;
                         }
                         // Remove datetime point buffer
                         if (this->pointDateTimeBuffer != NULL) {
@@ -169,6 +172,12 @@ namespace com
                             if (this->pointDateTimeBuffer->isOutdated()) {
                                 this->requestForDateTime();
                                 this->pointDateTimeBuffer->reset();
+                            }
+
+                            // Send battery level
+                            if (this->pointBatteryBuffer->isOutdated()) {
+                                this->requestForBatteryLevel();
+                                this->pointBatteryBuffer->reset();
                             }
 
                             // Send and listen
@@ -350,30 +359,6 @@ namespace com
                     }
 
                     /**
-                     * Flag to indicate if battery level component exists
-                     */
-                    bool hasBatteryLevel()
-                    {
-                        return this->batteryLevel != NULL;
-                    }
-
-                    /**
-                     * Set battery level component
-                     */
-                    void setBatteryLevel(BatteryLevel * batteryLevel)
-                    {
-                        this->batteryLevel = batteryLevel;
-                    }
-
-                    /**
-                     * Get battery level component
-                     */
-                    BatteryLevel * getBatteryLevel()
-                    {
-                        return this->batteryLevel;
-                    }
-
-                    /**
                      * Get Screen point buffer (line 1)
                      */
                     DataBuffer * getPointScreen1Buffer()
@@ -389,6 +374,14 @@ namespace com
                         return this->pointScreen2Buffer;
                     }
 
+                    /**
+                     * Get battery buffer point
+                     */
+                    DataBuffer * getPointBatteryBuffer()
+                    {
+                        return this->pointBatteryBuffer;
+                    }
+
                 protected:
 
                     /**
@@ -400,8 +393,11 @@ namespace com
                         ActionManager * actionManager = new ActionManager();
                         this->setActionManager(actionManager);
 
-                        // Create weather buffer
+                        // Weather buffer
                         this->weatherBuffer = new WeatherBuffer(sensor);
+
+                        // Battery buffer
+                        this->pointBatteryBuffer = new DataBuffer(BATTERY_SEND, 5000); // 5s after boot
 
                         // Buffer points
                         this->pointDateTimeBuffer = new DataBuffer(DATETIME_UPDATE, 10000); // 10s after boot
@@ -424,6 +420,11 @@ namespace com
                      * Weather buffer
                      */
                     WeatherBuffer * weatherBuffer = NULL;
+
+                    /**
+                     * Battery buffer point
+                     */
+                    DataBuffer * pointBatteryBuffer = NULL;
 
                     /**
                      * DateTime point buffer
@@ -449,11 +450,6 @@ namespace com
                      * Screen component
                      */
                     Screen * screen = NULL;
-
-                    /**
-                     * Battery level component
-                     */
-                    BatteryLevel * batteryLevel = NULL;
 
                 };
             }
