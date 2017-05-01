@@ -7,17 +7,21 @@
 #include <LiquidCrystal.h>
 #include <DHT.h>
 #include <com/osteres/automation/weathersensor/WeatherSensorApplication.h>
+#include <com/osteres/automation/weathersensor/display/WeatherOutput.h>
 #include <com/osteres/automation/transmission/Transmitter.h>
 #include <com/osteres/automation/arduino/transmission/ArduinoRequester.h>
 #include <com/osteres/automation/arduino/component/BatteryLevel.h>
+#include <com/osteres/automation/arduino/display/device/Screen.h>
 
 
 using com::osteres::automation::weathersensor::WeatherSensorApplication;
+using com::osteres::automation::weathersensor::display::WeatherOutput;
 using com::osteres::automation::transmission::Transmitter;
 using com::osteres::automation::arduino::transmission::ArduinoRequester;
 using com::osteres::automation::transmission::packet::Packet;
 using com::osteres::automation::transmission::packet::Command;
 using com::osteres::automation::arduino::component::BatteryLevel;
+using com::osteres::automation::arduino::display::device::Screen;
 
 /* Pins CE, CSN for ARDUINO */
 #define RF_CE    9
@@ -57,9 +61,11 @@ DHT sensor(DHT_PIN, DHT_TYPE);
 // Transmission (master mode)
 Transmitter transmitter(&radio, false);
 // Application
-WeatherSensorApplication application(&transmitter, &rtc, &sensor, &lcd);
+WeatherSensorApplication application(&transmitter, &rtc, &sensor);
 // BatteryLevel
 BatteryLevel batteryLevel(PIN_BATTERY_LEVEL_ANALOG);
+// Output
+WeatherOutput ouput(new Screen(&lcd), &rtc, application.getBatteryLevel(), application.getPropertyIdentifier(), application.getWeatherBuffer());
 
 /**
  * Initialize
@@ -80,15 +86,15 @@ void setup() {
     // Setup transmitter
     transmitter.setup();
 
+    // Setup output
+    ouput.getPointScreen1Buffer()->setBufferDelay(100); // 0.1s
+    ouput.getPointScreen2Buffer()->setBufferDelay(5000); // 5s
+    static_cast<Screen *>(ouput.getDevice())->enableSwitchDetection(PIN_STATE_SCREEN_ANALOG, false);
+
     // Setup (configuration)
     application.setBatteryLevel(&batteryLevel);
-    application.getPointScreen1Buffer()->setBufferDelay(100); // 0.1s
-    application.getPointScreen2Buffer()->setBufferDelay(5000); // 5s
     application.getWeatherBuffer()->setBufferDelay(30000); // 30s
     application.setup();
-
-    // Configure switch for screen
-    application.getScreen()->enableSwitchDetection(PIN_STATE_SCREEN_ANALOG, false);
 }
 
 /**
