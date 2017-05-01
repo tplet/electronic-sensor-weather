@@ -65,7 +65,7 @@ WeatherSensorApplication application(&transmitter, &rtc, &sensor);
 // BatteryLevel
 BatteryLevel batteryLevel(PIN_BATTERY_LEVEL_ANALOG);
 // Output
-WeatherOutput ouput(new Screen(&lcd), &rtc, application.getBatteryLevel(), application.getPropertyIdentifier(), application.getWeatherBuffer());
+WeatherOutput ouput(new Screen(&lcd), &rtc, &batteryLevel, application.getPropertyIdentifier(), application.getWeatherBuffer());
 
 /**
  * Initialize
@@ -90,6 +90,7 @@ void setup() {
     ouput.getPointScreen1Buffer()->setBufferDelay(100); // 0.1s
     ouput.getPointScreen2Buffer()->setBufferDelay(5000); // 5s
     static_cast<Screen *>(ouput.getDevice())->enableSwitchDetection(PIN_STATE_SCREEN_ANALOG, false);
+    application.setOutput(&ouput);
 
     // Setup (configuration)
     application.setBatteryLevel(&batteryLevel);
