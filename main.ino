@@ -1,10 +1,18 @@
+/*
+ * Debug
+ */
+// Use screen (use ~12.5 ko additional flash space / limited to 30 ko)
+#define SCREEN true
+
 #include <Arduino.h>
 #include <StandardCplusplus.h>
 #include <SPI.h>
 #include "RF24/nRF24L01.h"
 #include <RF24/RF24.h>
 #include <RTClib/RTClib.h>
+#if SCREEN
 #include <LiquidCrystal.h>
+#endif
 #include <DHT.h>
 #include <com/osteres/automation/weathersensor/WeatherSensorApplication.h>
 #include <com/osteres/automation/weathersensor/display/WeatherOutput.h>
@@ -22,12 +30,6 @@ using com::osteres::automation::transmission::packet::Packet;
 using com::osteres::automation::transmission::packet::Command;
 using com::osteres::automation::arduino::component::BatteryLevel;
 using com::osteres::automation::arduino::display::device::Screen;
-
-/*
- * Debug
- */
-// Use screen (use ~11.5 ko additional flash space / limited to 30 ko)
-#define SCREEN true
 
 /*
  * Pin
@@ -59,8 +61,10 @@ using com::osteres::automation::arduino::display::device::Screen;
 RF24 radio(RF_CE, RF_CSN);
 // DateTime
 RTC_DS1307 rtc;
+#if SCREEN
 // Screen
 LiquidCrystal lcd(3, 4, 5, 6, 7, 8);
+#endif
 // Sensor
 DHT sensor(DHT_PIN, DHT_TYPE);
 
