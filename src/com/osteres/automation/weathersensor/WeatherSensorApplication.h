@@ -72,7 +72,7 @@ namespace com
                     /**
                      * Destructor
                      */
-                    ~WeatherSensorApplication()
+                    virtual ~WeatherSensorApplication()
                     {
                         // Remove weather buffer
                         if (this->weatherBuffer != NULL) {
